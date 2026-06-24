@@ -1,0 +1,236 @@
+/* styles.css */
+
+/* =========================
+   Character Continuity Manager
+   ========================= */
+
+/* Launcher */
+
+#ccm-launcher {
+    position: fixed;
+
+    pointer-events: auto !important;
+    touch-action: manipulation;
+
+    z-index: 2147483647 !important;
+
+    top: 80px;
+    right: 15px;
+
+    width: 50px;
+    height: 50px;
+
+    border-radius: 50%;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    cursor: pointer;
+    user-select: none;
+
+    font-size: 24px;
+
+    background: var(--SmartThemeBlurTintColor, rgba(30,30,30,.9));
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+
+    backdrop-filter: blur(10px);
+}
+
+#ccm-launcher:hover {
+    filter: brightness(1.1);
+}
+
+/* Main Window */
+
+#ccm-panel {
+    position: fixed;
+
+    right: 20px;
+    bottom: 80px;
+
+    width: 400px;
+    height: 600px;
+
+    display: none;
+
+    z-index: 999998;
+
+    background: var(--SmartThemeBlurTintColor, rgba(20,20,20,.95));
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+    border-radius: 10px;
+
+    backdrop-filter: blur(10px);
+
+    overflow: hidden;
+}
+
+/* Header */
+
+#ccm-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    padding: 10px;
+
+    border-bottom: 1px solid var(--SmartThemeBorderColor, #666);
+}
+
+/* Body */
+
+#ccm-body {
+    padding: 10px;
+    height: calc(100% - 55px);
+    overflow-y: auto;
+}
+
+/* Buttons */
+
+#ccm-panel button {
+    background: var(--SmartThemeBlurTintColor, #333);
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+
+    border-radius: 6px;
+
+    cursor: pointer;
+}
+
+/* New Character Button */
+
+#ccm-add-character {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+/* Close Button */
+
+#ccm-close {
+    width: 32px;
+    height: 32px;
+
+    min-width: 32px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Character List */
+
+#ccm-character-list {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.ccm-character-row {
+    padding: 8px;
+
+    border-radius: 6px;
+
+    border: 1px solid transparent;
+
+    cursor: pointer;
+}
+
+.ccm-character-row:hover {
+    border-color: var(--SmartThemeBorderColor, #666);
+    background: rgba(255,255,255,0.05);
+}
+
+/* Scrollbar */
+
+#ccm-body::-webkit-scrollbar {
+    width: 8px;
+}
+
+#ccm-body::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: var(--SmartThemeBorderColor, #666);
+}
+
+#ccm-editor {
+    position: fixed;
+
+    top: 50%;
+    left: 50%;
+
+    transform: translate(-50%, -50%);
+
+    width: min(500px, 95vw);
+
+    max-height: 90vh;
+    overflow-y: auto;
+
+    z-index: 9999999;
+
+    background: var(--SmartThemeBlurTintColor, rgba(20,20,20,.95));
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+    border-radius: 10px;
+
+    backdrop-filter: blur(10px);
+
+    padding: 20px;
+}
+
+#ccm-editor button {
+    background: var(--SmartThemeBlurTintColor, #333);
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+
+    border-radius: 6px;
+
+    padding: 8px;
+
+    cursor: pointer;
+}
+
+#ccm-editor input {
+    width: 100%;
+
+    background: transparent;
+
+    color: var(--SmartThemeBodyColor, #fff);
+
+    border: 1px solid var(--SmartThemeBorderColor, #666);
+
+    border-radius: 6px;
+
+    padding: 8px;
+}
+
+#ccm-editor-content {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+#ccm-editor input {
+    width: 100%;
+}
+
+#ccm-editor-close {
+    width: 32px;
+    height: 32px;
+
+    min-width: 32px;
+
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
