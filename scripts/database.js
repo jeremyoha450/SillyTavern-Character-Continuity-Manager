@@ -1,131 +1,280 @@
-#Database
-import { CHARACTER_STATUS } from "./constants.js";
+// database.js
 
-const DB_KEY = "character_continuity_manager";
+import {
+    loadDatabase,
+    saveDatabase as saveStorage
+} from "./storage.js";
+
+
+const database =
+    loadDatabase() || {
+        version: 1,
+        characters: {}
+    };
+
+export function findCharacterByHash(
+    hash
+) {
+    return Object.values(
+        database.characters
+    ).find(
+        x =>
+            x.hashes?.full === hash ||
+            x.hashes?.description === hash
+    );
+}
+
+export function findCharacterByName(
+    name
+) {
+    return Object.values(
+        database.characters
+    ).find(
+        x =>
+            x.name?.toLowerCase() ===
+            name?.toLowerCase()
+    );
+}
+
+function generateId() {
+    return (
+        "char_" +
+        Date.now() +
+        "_" +
+        Math.random()
+            .toString(36)
+            .substring(2, 10)
+    );
+}
 
 export function getDatabase() {
-    return extension_settings[DB_KEY] ?? {
-        version: 1,
-        characters: {},
-    };
+    return database;
 }
 
-export function saveDatabase(db) {
-    extension_settings[DB_KEY] = db;
-    saveSettingsDebounced();
+export function saveDatabase() {
+    saveStorage(database);
 }
 
-export function createCharacter(name) {
+
+export function createCharacter(
+    name = "New Character"
+) {
     return {
-        id: crypto.randomUUID(),
+        id: generateId(),
 
         name,
 
-        status: CHARACTER_STATUS.ACTIVE,
+        status: "active",
 
         hashes: {
             full: "",
-            description: "",
+            description: ""
         },
 
         appearance: {
             gender: "",
             age: "",
-            height: "",
             species: "",
+            height: "",
 
             hair: {
                 color: "",
                 style: "",
+                length: ""
             },
 
             eyes: {
-                color: "",
+                color: ""
             },
 
-            build: "",
+            skin: "",
+            bodyType: "",
+
+            breastSize: "",
+            buttSize: ""
+        },
+
+        anatomy: {
+            penis: "",
+            penisState: "",
+
+            pussy: "",
+            pussyState: ""
         },
 
         clothing: {
             upper: "",
             lower: "",
-            footwear: "",
+            outerwear: "",
 
             underwear: {
                 top: "",
-                bottom: "",
+                bottom: ""
             },
+
+            footwear: ""
         },
 
         location: {
             place: "",
-            area: "",
+            area: ""
         },
 
         position: {
             posture: "",
-            detail: "",
+            detail: ""
         },
 
         mood: {
             primary: "",
-        },
-
-        accessories: [],
-
-        statusInfo: {
-            injuries: "",
-            condition: "",
-            notes: "",
+            intensity: ""
         },
 
         relationships: {
             user: {
                 status: "",
-                notes: "",
-            },
+                notes: ""
+            }
+        },
+
+        accessories: [],
+
+        inventory: [],
+
+        statusInfo: {
+            condition: "",
+            injuries: "",
+            notes: ""
         },
 
         locks: {},
+
+facts: {
+    age: {
+        value: "",
+        confidence: 0
+    },
+
+    eyeColor: {
+        value: "",
+        confidence: 0
+    },
+
+    hair: {
+        value: "",
+        confidence: 0
+    },
+
+    height: {
+        value: "",
+        confidence: 0
+    },
+
+    bodyType: {
+        value: "",
+        confidence: 0
+    },
+
+    personality: {
+        value: "",
+        confidence: 0
+    },
+
+    gender: {
+        value: "",
+        confidence: 0
+    },
+
+    species: {
+        value: "",
+        confidence: 0
+    },
+
+    notes: ""
+},
+state: {
+    location: "",
+    area: "",
+
+    outfit: "",
+
+    mood: "",
+
+    status: "",
+
+    notes: ""
+},
+anatomy: {
+    penis: "",
+    penisState: "",
+
+    pussy: "",
+    pussyState: ""
+},
+
+
+        createdAt: Date.now(),
+
+        updatedAt: Date.now()
     };
 }
 
-#Character
-export function addCharacter(character) {
-    const db = getDatabase();
+export function addCharacter(
+    character
+) {
+    database.characters[
+        character.id
+    ] = character;
 
-    db.characters[character.id] = character;
+    saveDatabase();
 
-    saveDatabase(db);
+    return character;
+}
+
+export function getAllCharacters() {
+    return Object.values(
+        database.characters
+    );
 }
 
 export function getCharacter(id) {
-    return getDatabase().characters[id];
+    return database.characters[id];
 }
 
-export function updateCharacter(id, updates) {
-    const db = getDatabase();
+export function updateCharacter(
+    id,
+    updates
+) {
+    if (!database.characters[id]) {
+        return false;
+    }
 
-    Object.assign(db.characters[id], updates);
+    database.characters[id] = {
+        ...database.characters[id],
+        ...updates,
 
-    saveDatabase(db);
+        updatedAt: Date.now()
+    };
+
+    saveDatabase();
+
+    return true;
 }
 
-#Archive
 export function archiveCharacter(id) {
-    const db = getDatabase();
-
-    db.characters[id].status = "archived";
-
-    saveDatabase(db);
+    return updateCharacter(id, {
+        status: "archived"
+    });
 }
 
-#Delete
+export function restoreCharacter(id) {
+    return updateCharacter(id, {
+        status: "active"
+    });
+}
+
 export function deleteCharacter(id) {
-    const db = getDatabase();
+    delete database.characters[id];
 
-    delete db.characters[id];
-
-    saveDatabase(db);
+    saveDatabase();
 }
-
