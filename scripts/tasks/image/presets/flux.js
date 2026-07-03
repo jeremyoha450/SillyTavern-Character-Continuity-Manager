@@ -18,7 +18,7 @@ RULES
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- Always depict the primary character facing the viewer and looking at the viewer. Always include this in the description.
+- If the state specifies a position, pose, head position, or eye direction, describe it exactly. Only when the state specifies none of these, describe the character facing the viewer and looking at the viewer.
 - Describe details in this order: subject, appearance, attire, pose and expression, setting, lighting and color, composition.
 - Keep related appearance and clothing descriptions together.
 - Do not use quality booster tags. FLUX responds to descriptive language instead. Use terms such as highly detailed, sharp focus, cinematic lighting, anime illustration style where appropriate.
@@ -39,8 +39,7 @@ Use clear descriptive prose with subject, appearance, clothing, pose, expression
     scoreTags: [],
     styleTags: [],
     requiredTags: [],
-    negativePrompt:
-	"worst aesthetic, worst quality, low quality, bad quality, normal quality,lowres, blurry, jpeg artifacts, scan artifacts, compression artifacts, ai-generated, old, overexposed, underexposed, washed out, oversaturated, lens flare, chromatic aberration, film grain, noise, signature, watermark, logo, text, username, artist name, speech bubble, thought bubble, censored, mosaic censoring, bar censor, bad anatomy, bad hands, extra fingers, fewer fingers, missing fingers, extra limbs, missing limbs, floating limbs, disconnected limbs, fused limbs, extra heads, extra faces, extra body, fused bodies, mutated hands, deformed hands, poorly drawn hands, extra digits, bad feet, extra toes, missing toes, poorly drawn feet, bad legs, long neck, short neck, bad neck, bad proportions, malformed, poorly drawn face, bad face, asymmetrical face, disfigured face, deformed eyes, crossed eyes, asymmetrical eyes, uneven eyes, mismatched eyes, bad hair, bad teeth, 3d render, realistic, photorealistic, western style, multiple views, comic, 4koma, sketch, monochrome, greyscale, flat color, flat shading, draft, rough, unfinished, out of frame, cropped, poorly drawn, duplicate, bad perspective, warped background, tilted horizon, split screen, panel layout, busy background"
+    negativePrompt: ""
 };
 
 export default fluxPreset;

@@ -16,11 +16,11 @@ RULES
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- Always depict the primary character facing the viewer and looking at the viewer. Include both tags: facing viewer, looking at viewer.
+- If the state specifies a position, pose, head position, or eye direction, follow it exactly. Only when the state specifies none of these, default to: facing viewer, looking at viewer.
 - Order tags as: quality, safety, subject count/type, appearance, attire, pose and expression, setting, lighting and color, composition.
 - Keep related appearance and clothing tags together.
-- Begin the prompt with: masterpiece, best quality, score_7.
-- Always include one safety tag immediately after the quality tags: safe, sensitive, nsfw, or explicit. Choose based on the content of the scene.
+- Do not add quality tags; the preset formatter supplies them.
+- Begin the prompt with one safety tag: safe, sensitive, nsfw, or explicit. Choose based on the content of the scene.
 - Use Danbooru-style visual tags where possible, but natural language phrases are also acceptable for details that are hard to express as tags.
 - Avoid contradictory and redundant tags. Do not use very awa, newest, absurdres, or Pony score_9/score_8_up tags as these are not recognised by Anima.
 - Never include clothing manipulation tags (such as clothes pull, shirt pull, skirt pull, dress pull, clothes lift, shirt lift, skirt lift, dress lift, undressing, removing, stripping, taking off clothes, disrobe, or any similar tag implying removal or displacement of clothing) unless the state explicitly describes that action.
@@ -48,10 +48,7 @@ const animaPreset = {
     ],
     scoreTags: [],
     styleTags: [],
-    requiredTags: [
-        "facing viewer",
-        "looking at viewer"
-    ],
+    requiredTags: [],
     preserveUnderscores: true,
     negativePrompt: ""
 };

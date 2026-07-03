@@ -18,7 +18,7 @@ RULES
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- Always depict the primary character facing the viewer and looking at the viewer. Include both tags: facing viewer, looking at viewer.
+- If the state specifies a position, pose, head position, or eye direction, follow it exactly. Only when the state specifies none of these, default to: facing viewer, looking at viewer.
 - Order tags as: quality, subject count/type, appearance, attire, pose and expression, setting, lighting and color, composition.
 - Keep related appearance and clothing tags together.
 - Use Danbooru-style visual tags, favoring specific tags over natural-language phrases.
@@ -33,7 +33,7 @@ RULES
 - Do not include revealing clothes, skimpy, partially clothed, or similar tags unless the state explicitly describes that clothing style.
 - If the state includes any clothing items, always include the clothed tag in the output.
 
-Return only valid JSON: {"prompt":"comma-separated tags and short descriptive phrases"}. State overrides facts. Do not include character names, notes, metadata, confidence values, unsupported details, or invented characters. Keep the primary character facing and looking at the viewer. Include only explicitly visible anatomy and clothing state. Order content as subject, appearance, clothing, pose, hands, head, eyes, expression, setting, lighting, and composition. Do not add quality tags; the preset formatter supplies them.]`,
+Return only valid JSON: {"prompt":"comma-separated tags and short descriptive phrases"}. State overrides facts. Do not include character names, notes, metadata, confidence values, unsupported details, or invented characters. Follow the state's pose and gaze; face and look at the viewer only when the state does not specify them. Include only explicitly visible anatomy and clothing state. Order content as subject, appearance, clothing, pose, hands, head, eyes, expression, setting, lighting, and composition. Do not add quality tags; the preset formatter supplies them.]`,
     prefix: "",
     suffix: "",
     qualityTags: [
@@ -42,10 +42,7 @@ Return only valid JSON: {"prompt":"comma-separated tags and short descriptive ph
     ],
     scoreTags: [],
     styleTags: [],
-    requiredTags: [
-        "facing viewer",
-        "looking at viewer"
-    ],
+    requiredTags: [],
     negativePrompt:
         "worst aesthetic, worst quality, low quality, bad quality, normal quality,lowres, blurry, jpeg artifacts, scan artifacts, compression artifacts, ai-generated, old, overexposed, underexposed, washed out, oversaturated, lens flare, chromatic aberration, film grain, noise, signature, watermark, logo, text, username, artist name, speech bubble, thought bubble, censored, mosaic censoring, bar censor, bad anatomy, bad hands, extra fingers, fewer fingers, missing fingers, extra limbs, missing limbs, floating limbs, disconnected limbs, fused limbs, extra heads, extra faces, extra body, fused bodies, mutated hands, deformed hands, poorly drawn hands, extra digits, bad feet, extra toes, missing toes, poorly drawn feet, bad legs, long neck, short neck, bad neck, bad proportions, malformed, poorly drawn face, bad face, asymmetrical face, disfigured face, deformed eyes, crossed eyes, asymmetrical eyes, uneven eyes, mismatched eyes, bad hair, bad teeth, 3d render, realistic, photorealistic, western style, multiple views, comic, 4koma, sketch, monochrome, greyscale, flat color, flat shading, draft, rough, unfinished, out of frame, cropped, poorly drawn, duplicate, bad perspective, warped background, tilted horizon, split screen, panel layout, busy background"
 };
