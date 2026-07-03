@@ -36,7 +36,8 @@ import {
 
 import {
     renderCharacterList,
-    renderCharacterDashboard
+    renderCharacterDashboard,
+    openDashboard
 } from "./ui.js";
 
 import {
@@ -418,31 +419,13 @@ ${initialStateText}`,
 		"Character added to CCM"
 	);
 
-	const panel =
-		document.getElementById(
-			"ccm-panel"
-		);
+	// The panel only exists while the dashboard is open,
+	// so create it if needed before rendering into it.
+	openDashboard();
 
-	if (panel) {
-		panel.style.display =
-			"block";
-	}
-
-	setTimeout(
-		() => {
-			renderCharacterDashboard(
-				newCharacter.id
-			);
-		},
-		50
+	renderCharacterDashboard(
+		newCharacter.id
 	);
-
-	/* console.log(
-		"[CCM] Extracted Facts",
-		facts
-	); */
-
-    renderCharacterList();
 }
 
 async function onAutoStateUpdate() {

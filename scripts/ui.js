@@ -408,6 +408,23 @@ function toggleDashboard() {
     }
 }
 
+export function openDashboard() {
+
+    if (
+        document.getElementById(
+            "ccm-panel"
+        )
+    ) {
+        return;
+    }
+
+    if (dashboardViewport.matches) {
+        openDashboardPopup();
+    } else {
+        openFloatingDashboard();
+    }
+}
+
 function openFloatingDashboard() {
 
     const panel =
