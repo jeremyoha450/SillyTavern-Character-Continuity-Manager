@@ -19,11 +19,22 @@ const knowledgeUpdateTask = {
     temperature: 0,
 
     buildMessages(
-    {
-        knowledge,
-        conversation
-    }
-	) {
+        {
+            knowledge,
+            conversation
+        }
+    ) {
+
+        // The model only works with text and confidence.
+        // Ids and timestamps are internal; sending them
+        // wastes tokens and invites the model to echo them.
+        const slimKnowledge =
+            (knowledge || []).map(
+                item => ({
+                    text: item.text,
+                    confidence: item.confidence
+                })
+            );
 
         return [
 
@@ -33,20 +44,20 @@ const knowledgeUpdateTask = {
             },
 
             {
-				role: "user",
-				content:
-			`EXISTING KNOWLEDGE
+                role: "user",
+                content:
+`EXISTING KNOWLEDGE
 
-			${JSON.stringify(
-				knowledge,
-				null,
-				2
-			)}
+${JSON.stringify(
+    slimKnowledge,
+    null,
+    2
+)}
 
-			RECENT CONVERSATION
+RECENT CONVERSATION
 
-			${conversation}`
-			}
+${conversation}`
+            }
 
         ];
 

@@ -18,33 +18,29 @@ RULES
 - accessories: items the character is currently visibly wearing or actively carrying right now in this scene (e.g. necklace, glasses, watch, bag). Do NOT include habits, tendencies, or things they "sometimes" carry. Only extract if confirmed present in the current scene.
 - If the character is female, penis, penisState, and penisCondition must always be "" with confidence 100. Never populate these fields for a female character.
 - If the character is male, pussy, pussyState, and pussyCondition must always be "" with confidence 100. Never populate these fields for a male character.
-- moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
-
-
-
 FIELD GUIDANCE
-- upper: shirt, t-shirt, tank top, crop top, blouses — "white shirt" if not described.
+- upper: shirt, t-shirt, tank top, crop top, blouses — leave blank if not described.
 - outerwear: jacket, hoodie, jumper, coat, cardigan — leave blank if not described.
-- lower: short, pant, jean, skirt, dress, legging — "Blue short" if not described.
-- underwearTop: bra, sports bra, singlet, camisole — "no bra" if female and not described. "no singlet" if male and not described.
-- underwearBottom: panties, brief, boxer — "no panties" if female and not described. "no underwear" if male and not described.
-- footwear: socks, shoes, boots, sandals, slippers, high heels — "barefoot" if not described.
-- location: general place (e.g. Bedroom, Kitchen, Beach, Park) —   "House" if not described.
-- area: specific spot within location (e.g. On the bed, In the shower, At the desk). Never use body parts — "Bedroom" if not described.
+- lower: short, pant, jean, skirt, dress, legging — leave blank if not described.
+- underwearTop: bra, sports bra, singlet, camisole — leave blank if not described.
+- underwearBottom: panties, brief, boxer — leave blank if not described.
+- footwear: socks, shoes, boots, sandals, slippers, high heels — leave blank if not described.
+- location: general place (e.g. Bedroom, Kitchen, Beach, Park) — leave blank if not described.
+- area: specific spot within location (e.g. On the bed, In the shower, At the desk). Never use body parts — leave blank if not described.
 - position: overall body posture (e.g. Standing, Sitting, Lying, Kneeling) — leave blank if not described.
 - positionDetail: exact pose or orientation (e.g. Lying on back, Sitting cross-legged, Leaning against wall) — leave blank if not described.
-- leftHand: the left hand's current position or action as one concise phrase (e.g. Resting on hip, Holding the sheet) — "Left hand by side" if not described.
-- rightHand: the right hand's current position or action as one concise phrase (e.g. Holding coffee mug, Touching their face, In pocket) — "Right hand by side" if not described.
+- leftHand: the left hand's current position or action as one concise phrase (e.g. Resting on hip, Holding the sheet) — leave blank if not described.
+- rightHand: the right hand's current position or action as one concise phrase (e.g. Holding coffee mug, Touching their face, In pocket) — leave blank if not described.
 - headPosition: current head angle or orientation (e.g. Tilted left, Turned toward the door, Chin lowered) — leave blank if not described.
 - eyeDirection: where the eyes are currently looking (e.g. At the user, Downward, Toward the door, Eyes closed) — leave blank if not described.
 - expression: visible facial expression only (e.g. Smiling, Frowning, Wide-eyed, Tearful, Grimacing) — leave blank if not described.
 - mood: current emotional state (e.g. Happy, Anxious, Embarrassed, Calm, Excited) — leave blank if not described.
 - moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
-- penis: male only — physical characteristics only (e.g. Small size, Average size, Large size, Circumcised) — "Average size" if not described. Always "" if character is female.
-- penisState: male only — current state (e.g. Soft, Semi-erect, Erect) — "Soft" if not described. Always "" if character is female.
+- penis: male only — physical characteristics only (e.g. Small size, Average size, Large size, Circumcised) — leave blank if not described. Always "" if character is female.
+- penisState: male only — current state (e.g. Soft, Semi-erect, Erect) — leave blank if not described. Always "" if character is female.
 - penisCondition: male only — visible conditions not covered by penisState (e.g. Sore, Swollen, Injured, Clean). Do not repeat penisState — leave blank if not described. Always "" if character is female.
-- pussy: female only — physical characteristics only (e.g. Shaved, Trimmed, Natural) — "Shaved" if not described. Always "" if character is male.
-- pussyState: female only — current state (e.g. Dry, Moist, Wet, Dripping) — "Dry" if not described. Always "" if character is male.
+- pussy: female only — physical characteristics only (e.g. Shaved, Trimmed, Natural) — leave blank if not described. Always "" if character is male.
+- pussyState: female only — current state (e.g. Dry, Moist, Wet, Dripping) — leave blank if not described. Always "" if character is male.
 - pussyCondition: female only — visible conditions not covered by pussyState (e.g. Swollen, Sore, Injured, Clean). Do not repeat pussyState — leave blank if not described. Always "" if character is male.
 - condition: temporary physical states (e.g. Sweaty, Blushing, Drunk, Shaking, Tired, Exhausted) — leave blank if not described.
 - injuries: leave blank if not described. Only describe damage to these body parts: head, face, neck, shoulders, arms, hands, wrists, back, stomach, legs, knees, feet. No other body parts are valid in this field. No exceptions.
