@@ -50,6 +50,13 @@ Code review fixes applied 2026-07-03, verified working inside SillyTavern 2026-0
 - CCM dashboard auto-opens on the new character after creation (fixed after in-app testing)
 - In-app test pass covered: creation, manual/auto state and knowledge updates, editor round-trip with quotes, knowledge with special characters, empty defaults, settings/usage/image screens, dashboard refresh
 
+Prompt and preset updates applied and verified in SillyTavern 2026-07-04:
+- Knowledge update sends only text/confidence to the model (ids and timestamps stay internal)
+- Facts prompt: "White skink" typo fixed; bodyType and skin apply to all genders; single moodIntensity word scale
+- State prompt: duplicate moodIntensity rule removed; all "if not described" defaults kept as designed
+- Image presets: pose/gaze follows extracted state with facing/looking at viewer as fallback only; NoobAI/Anima/Pony no longer duplicate formatter-supplied quality/score tags; Flux negative emptied; SDXL negative no longer bans realistic styles
+- Preset changes require Restore This Preset / Restore All in Settings to reach saved copies
+
 Next major feature:
 To be decided
 
