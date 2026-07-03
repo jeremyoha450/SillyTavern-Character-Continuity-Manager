@@ -1,0 +1,102 @@
+{
+"version": 1,
+
+"settings": {
+"extractionMode": "current_model",
+"updateFrequency": 3,
+"promptInjectionEnabled": true,
+"trackUserState": false
+},
+
+"characters": {
+"char_001": {
+"id": "char_001",
+
+```
+  "name": "Sarah",
+
+  "status": "active",
+
+  "hashes": {
+    "full": "",
+    "description": ""
+  },
+
+  "linkedCards": [],
+
+  "createdAt": "",
+  "updatedAt": "",
+
+  "appearance": {
+    "gender": "",
+    "age": "",
+    "height": "",
+    "species": "",
+
+    "hair": {
+      "color": "",
+      "style": ""
+    },
+
+    "eyes": {
+      "color": ""
+    },
+
+    "build": ""
+  },
+
+  "clothing": {
+    "upper": "",
+    "lower": "",
+    "footwear": "",
+
+    "underwear": {
+      "top": "",
+      "bottom": ""
+    }
+  },
+
+  "location": {
+    "place": "",
+    "area": ""
+  },
+
+  "position": {
+    "posture": "",
+    "detail": ""
+  },
+
+  "mood": {
+    "primary": ""
+  },
+
+  "statusInfo": {
+    "injuries": "",
+    "condition": "",
+    "notes": ""
+  },
+
+  "accessories": [],
+
+  "relationships": {
+    "user": {
+      "status": "",
+      "notes": ""
+    }
+  },
+
+  "locks": {
+    "appearance.gender": false,
+    "appearance.age": false,
+    "appearance.height": false,
+    "appearance.species": false,
+    "appearance.hair.color": false,
+    "appearance.eyes.color": false
+  },
+
+  "history": []
+}
+```
+
+}
+}

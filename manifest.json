@@ -1,0 +1,11 @@
+{
+  "display_name": "Character Continuity Manager",
+  "loading_order": 10,
+  "requires": [],
+  "optional": [],
+  "js": "index.js",
+  "css": "style.css",
+  "author": "Jeremy O'Hara",
+  "version": "0.1.0",
+  "homePage": "https://github.com/jeremyoha450/SillyTavern-Character-Continuity-Manager"
+}
