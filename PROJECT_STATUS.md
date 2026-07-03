@@ -37,7 +37,7 @@ CCM current status:
 - Character dashboard shows Latest Image, Gallery, and Prompt History
 - Image details support Copy Prompt, Use Again, Set as Character Image, opening the SillyTavern image, and removal from CCM history
 
-Code review fixes applied 2026-07-03 (NOT yet tested inside SillyTavern):
+Code review fixes applied 2026-07-03, verified working inside SillyTavern 2026-07-04:
 - Knowledge update parser strips markdown code fences and now throws on invalid JSON instead of returning an empty list, so a bad AI response can no longer wipe saved knowledge
 - Knowledge change detection compares text/confidence only; item ids and createdAt are preserved across updates
 - Auto state/knowledge windows are hashed (SHA-256, cyrb53 fallback on plain http) instead of storing full chat text in settings
@@ -47,6 +47,8 @@ Code review fixes applied 2026-07-03 (NOT yet tested inside SillyTavern):
 - New characters no longer default to "White Skin" / "Home" / "Bedroom"; those fields start empty
 - Project is now a git repository; branch pre-review-snapshot holds the pre-review backup
 - Verified with Node: all files parse, all imports resolve, parser and hash fixes pass runtime checks
+- CCM dashboard auto-opens on the new character after creation (fixed after in-app testing)
+- In-app test pass covered: creation, manual/auto state and knowledge updates, editor round-trip with quotes, knowledge with special characters, empty defaults, settings/usage/image screens, dashboard refresh
 
 Next major feature:
 To be decided
