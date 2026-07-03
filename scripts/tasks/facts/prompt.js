@@ -15,7 +15,6 @@ RULES
 - characterName: the character's actual personal name stated in the description. Do not use or infer the SillyTavern card name. Leave blank if no personal name is stated.
 - bodyType describes physical build only (e.g. petite, athletic, curvy, slim, muscular, lithe). No attractiveness terms (hot, sexy, beautiful, attractive).
 - mood: the character's current mood at this exact moment in the scene. Infer from tone, body language, dialogue, or context if not stated explicitly.
-- moodIntensity: how strongly they feel it right now, from 1 (barely noticeable) to 10 (overwhelming).
 - notes: facts that don't fit any field, under 100 words only.
 - moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
 - injuries never contains any reference to intimate or genital areas. Those conditions belong in pussyCondition or penisCondition only.
@@ -26,8 +25,8 @@ RULES
 FIELD GUIDANCE
 - injuries: leave blank if not described. Only describe damage to these body parts: head, face, neck, shoulders, arms, hands, wrists, back, stomach, legs, knees, feet. No other body parts are valid in this field. No exceptions.
 - breastSize: female only — physical characteristics only (e.g. Small Breasts, Medium Breasts, Large Breasts, Extra Large Breasts, Huge Breasts) — "Small Breasts" if not described. Always "" if character is male.
-- bodyType: physical characteristics only (e.g. Slim body, curvy body, athletic body) — "Slim body" if not described. Always "" if character is male.
-- skin: physical characteristics only (e.g. White skink, brown skin, olive skin, tan skin) — "White skin" if not described. Always "" if character is male.
+- bodyType: physical characteristics only (e.g. Slim body, curvy body, athletic body) — "Slim body" if not described. Applies to all genders.
+- skin: physical characteristics only (e.g. White skin, brown skin, olive skin, tan skin) — "White skin" if not described. Applies to all genders.
 - age: number only — never include "years old", "yr", or any 
   other text. "18" is correct. "18 years old" is wrong.
 

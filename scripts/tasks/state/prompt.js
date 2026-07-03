@@ -18,10 +18,6 @@ RULES
 - accessories: items the character is currently visibly wearing or actively carrying right now in this scene (e.g. necklace, glasses, watch, bag). Do NOT include habits, tendencies, or things they "sometimes" carry. Only extract if confirmed present in the current scene.
 - If the character is female, penis, penisState, and penisCondition must always be "" with confidence 100. Never populate these fields for a female character.
 - If the character is male, pussy, pussyState, and pussyCondition must always be "" with confidence 100. Never populate these fields for a male character.
-- moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
-
-
-
 FIELD GUIDANCE
 - upper: shirt, t-shirt, tank top, crop top, blouses — "white shirt" if not described.
 - outerwear: jacket, hoodie, jumper, coat, cardigan — leave blank if not described.
