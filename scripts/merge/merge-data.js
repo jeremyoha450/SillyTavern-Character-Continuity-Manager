@@ -54,30 +54,8 @@ export function mergeData(
         if (
             current?.value === field.value
         ) {
-
-            if (
-                field.confidence >
-                current.confidence
-            ) {
-
-                const oldValue =
-                    structuredClone(
-                        current
-                    );
-
-                merged[key].confidence =
-                    field.confidence;
-
-                changes.push({
-                    field: key,
-                    old: oldValue,
-                    new: structuredClone(
-                        merged[key]
-                    )
-                });
-
-            }
-
+            // Identical value is not a change: keep the
+            // stored entry untouched and record no event.
             continue;
         }
 

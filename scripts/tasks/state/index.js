@@ -19,8 +19,27 @@ const stateTask = {
     temperature: 0,
 
     buildMessages(
-        text
+        input
     ) {
+
+        const isObject =
+            input !== null &&
+            typeof input === "object";
+
+        const baseline =
+            isObject
+                ? input.baseline
+                : null;
+
+        const messages =
+            isObject
+                ? input.messages
+                : input;
+
+        const previousStateBlock =
+            baseline
+                ? `<previous_state read_only="true">\n${baseline}\n</previous_state>\n\n`
+                : "";
 
         return [
 
@@ -32,9 +51,9 @@ const stateTask = {
             {
                 role: "user",
                 content:
-`Recent Chat:
-
-${text}`
+`${previousStateBlock}<recent_messages>
+${messages}
+</recent_messages>`
             }
 
         ];

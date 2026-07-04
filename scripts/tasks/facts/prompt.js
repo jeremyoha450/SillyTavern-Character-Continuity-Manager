@@ -13,7 +13,9 @@ RULES
 - If a field has no matching information, leave value as "" and confidence as 0.
 - Use the most concise value possible.
 - characterName: the character's actual personal name stated in the description. Do not use or infer the SillyTavern card name. Leave blank if no personal name is stated.
-- bodyType describes physical build only (e.g. petite, athletic, curvy, slim, muscular, lithe). No attractiveness terms (hot, sexy, beautiful, attractive).
+- bodyType describes physical build only (e.g. petite body, athletic body, curvy body, slim body, muscular body). No attractiveness terms (hot, sexy, beautiful, attractive, lithe).
+- skin describes Skin color or fur color only (e.g. White skin, brown skin, olive skin, tan skin, Brown Fur, Black Fur, White Fur). No single word terms (white, black, brown, grey).
+- eye describes eye color only (e.g. blue eyes, brown eyes, green eyes, pink eyes, amber eyes, orange eyes, yellow eyes). No single word terms (green, yellow, brown, grey).
 - mood: the character's current mood at this exact moment in the scene. Infer from tone, body language, dialogue, or context if not stated explicitly.
 - notes: facts that don't fit any field, under 100 words only.
 - moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
@@ -27,6 +29,7 @@ FIELD GUIDANCE
 - breastSize: female only — physical characteristics only (e.g. Small Breasts, Medium Breasts, Large Breasts, Extra Large Breasts, Huge Breasts) — "Small Breasts" if not described. Always "" if character is male.
 - bodyType: physical characteristics only (e.g. Slim body, curvy body, athletic body) — "Slim body" if not described. Applies to all genders.
 - skin: physical characteristics only (e.g. White skin, brown skin, olive skin, tan skin) — "White skin" if not described. Applies to all genders.
+- skin: physical characteristics only (e.g. Green eyes, brown eyes, yellow eyes, orange eyes) — "Brown eyes" if not described. Applies to all genders.
 - age: number only — never include "years old", "yr", or any 
   other text. "18" is correct. "18 years old" is wrong.
 

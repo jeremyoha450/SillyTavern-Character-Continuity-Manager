@@ -1,4 +1,4 @@
-// scriptsstateupdate-state.js
+// scripts/state/update-state.js
 
 import {
     getCharacter,
@@ -20,6 +20,101 @@ import {
 import stateSchema
 from "../tasks/state/schema.js";
 
+// Momentary fields that must always be re-derived from the
+// new messages. They are stripped from the baseline sent to
+// the LLM, never from the stored state itself.
+const TRANSIENT_FIELDS = new Set([
+    "leftHand",
+    "rightHand",
+    "headPosition",
+    "eyeDirection",
+    "expression",
+    "mood",
+    "moodIntensity",
+    "positionDetail"
+]);
+
+function buildStateBaseline(facts) {
+
+    const value = key =>
+        TRANSIENT_FIELDS.has(key)
+            ? ""
+            : String(facts[key]?.value ?? "").trim();
+
+    const wearing = [
+        "upper",
+        "outerwear",
+        "lower",
+        "underwearTop",
+        "underwearBottom",
+        "footwear"
+    ]
+        .map(value)
+        .filter(Boolean)
+        .join("; ");
+
+    const place = [
+        "location",
+        "area"
+    ]
+        .map(value)
+        .filter(Boolean)
+        .join(", ");
+
+    const anatomy = [
+        "penis",
+        "penisState",
+        "penisCondition",
+        "pussy",
+        "pussyState",
+        "pussyCondition"
+    ]
+        .map(value)
+        .filter(Boolean)
+        .join("; ");
+
+    const sections = [
+
+        wearing
+            ? `Previously wearing: ${wearing}.`
+            : "",
+
+        place
+            ? `Location: ${place}.`
+            : "",
+
+        value("position")
+            ? `Position: ${value("position")}.`
+            : "",
+
+        value("accessories")
+            ? `Accessories: ${value("accessories")}.`
+            : "",
+
+        anatomy
+            ? `Anatomy: ${anatomy}.`
+            : "",
+
+        value("condition")
+            ? `Condition: ${value("condition")}.`
+            : "",
+
+        value("injuries")
+            ? `Injuries: ${value("injuries")}.`
+            : "",
+
+        value("notes")
+            ? `Notes: ${value("notes")}.`
+            : ""
+
+    ].filter(Boolean);
+
+    return sections.length
+        ? sections.join(" ")
+        : null;
+
+}
+
 export async function updateCharacterStateData(
     id,
     messages
@@ -37,16 +132,6 @@ export async function updateCharacterStateData(
         );
 
     }
-
-    const state =
-        await extractState(
-            messages,
-            {
-                characterId: id,
-                characterName:
-                    character.name
-            }
-        );
 
     const currentFacts =
         structuredClone(
@@ -113,6 +198,24 @@ export async function updateCharacterStateData(
         }
 
     }
+
+    const baseline =
+        buildStateBaseline(
+            currentFacts
+        );
+
+    const state =
+        await extractState(
+            {
+                baseline,
+                messages
+            },
+            {
+                characterId: id,
+                characterName:
+                    character.name
+            }
+        );
 
     const mergedState =
         mergeData(

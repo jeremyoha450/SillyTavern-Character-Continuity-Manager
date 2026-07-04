@@ -1,6 +1,5 @@
 const SYSTEM_PROMPT = `
 [Pause roleplay. Create a prompt for a NoobAI-XL, Illustrious, or similar Danbooru-tag-based anime image model.
-
 RULES
 - Return only valid JSON matching this exact shape:
   {"prompt":"comma-separated tags"}
@@ -23,12 +22,18 @@ RULES
 - Avoid contradictory and redundant tags. Do not use Pony score tags.
 - Never include clothing manipulation tags (such as clothes pull, shirt pull, skirt pull, dress pull, clothes lift, shirt lift, skirt lift, dress lift, undressing, removing, stripping, taking off clothes, disrobe, or any similar tag implying removal or displacement of clothing) unless the state explicitly describes that action.
 - Do not infer or imply any action not present in state. Omit any tag that adds behaviour, interaction, or clothing change beyond what is explicitly described.
-- Only include anatomy tags for body parts that are explicitly visible given the current clothing state. If a body part is covered by any clothing item, omit all anatomy tags for that part entirely. Examples: if a shirt or bra is worn, omit breast, nipple, and chest anatomy tags; if shorts, pants, skirt, panties, or any lower-body clothing is worn, omit pussy, vagina, penis, and genital anatomy tags; if a shirt covers the stomach, omit navel tags.
-- Do not use see-through, transparent, or cameltoe tags unless the state explicitly describes that condition. Do not imply visible anatomy through clothing-state tags unless stated.
-- Use personality or relationship details only when they have a clear visible effect on expression or body language.
-- Do not include nude, naked, topless, bottomless, or undressed tags unless the state explicitly describes that condition.
-- If only one character is described, always include solo and do not add any other character-count tags.
+COVERAGE AND ANATOMY RULES
+- Default assumption: every body part is covered unless the state explicitly says it is bare, exposed, uncovered, or visible. Absence of information about a body part always means covered, never exposed.
+- Never include intimate anatomy exposure tags (such as breasts out, nipples, areolae, pussy, vagina, penis, testicles, anus, ass, buttocks, navel, groin, or any tag naming an intimate body part as visible) unless the state explicitly and unambiguously describes that exact part as exposed or nude.
+- Body proportion tags that describe overall build through clothing (such as large breasts, small breasts, flat chest, wide hips, curvy, thick thighs) are permitted only if supplied in facts or state, and never imply exposure.
+- Never include partial-exposure or exposure-implying tags (such as cleavage, sideboob, underboob, downblouse, upskirt, pantyshot, panties, bra visible, underwear visible, nipple bulge, covered nipples, covered navel, cameltoe, wardrobe malfunction, clothing slip, breast slip, areola slip, nipple slip, midriff, bare shoulders, bare legs, barefoot, zettai ryouiki) unless the state explicitly describes that exact detail as visible.
+- Never use see-through, transparent, wet clothes, skin tight, or any tag that renders anatomy visible through clothing unless the state explicitly describes that condition.
+- Do not include nude, naked, topless, bottomless, underwear only, or undressed tags unless the state explicitly describes that condition.
 - Do not include revealing clothes, skimpy, partially clothed, or similar tags unless the state explicitly describes that clothing style.
+- If any rule conflict arises, resolve it in favor of more coverage and fewer anatomy tags.
+GENERAL RULES
+- Use personality or relationship details only when they have a clear visible effect on expression or body language.
+- If only one character is described, always include solo and do not add any other character-count tags.
 ]`;
 
 const noobaiPreset = {

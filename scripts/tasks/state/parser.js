@@ -3,6 +3,13 @@
 import schema
 from "./schema.js";
 
+// The prompt requires these to be populated in every
+// response; their absence means the response is malformed.
+const REQUIRED_KEYS = [
+    "underwearTop",
+    "underwearBottom"
+];
+
 function cleanResponse(
     text
 ) {
@@ -68,17 +75,21 @@ export function parse(
 ) {
 
     if (typeof text !== "string") {
-        return structuredClone(schema);
+
+        throw new Error(
+            "State response was not text."
+        );
+
     }
+
+    let data;
 
     try {
 
-        const data =
+        data =
             JSON.parse(
                 cleanResponse(text)
             );
-
-        return normalizeState(data);
 
     } catch (error) {
 
@@ -87,8 +98,40 @@ export function parse(
             error
         );
 
-        return structuredClone(schema);
+        // Returning an empty schema here would merge as
+        // "no changes" and hide the failure; a malformed
+        // response must abort the update so the stored
+        // state is left untouched.
+        throw new Error(
+            "State response was not valid JSON."
+        );
 
     }
+
+    if (
+        !data ||
+        typeof data !== "object" ||
+        Array.isArray(data)
+    ) {
+
+        throw new Error(
+            "State response was not an object."
+        );
+
+    }
+
+    for (const key of REQUIRED_KEYS) {
+
+        if (!(key in data)) {
+
+            throw new Error(
+                `State response is missing required key '${key}'.`
+            );
+
+        }
+
+    }
+
+    return normalizeState(data);
 
 }
