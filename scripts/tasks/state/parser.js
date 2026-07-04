@@ -34,6 +34,23 @@ function cleanResponse(
 
 }
 
+// Models sometimes return literal quote marks (e.g. "''")
+// when instructed that a field "must be ''". A quote-only
+// value is junk and means empty.
+function normalizeValue(raw) {
+
+    const value =
+        raw === undefined ||
+        raw === null
+            ? ""
+            : String(raw).trim();
+
+    return /^["'`]+$/.test(value)
+        ? ""
+        : value;
+
+}
+
 function normalizeState(
     data
 ) {
@@ -54,10 +71,7 @@ function normalizeState(
         }
 
         result[key].value =
-            source.value === undefined ||
-            source.value === null
-                ? ""
-                : String(source.value);
+            normalizeValue(source.value);
 
         const confidence =
             Number(source.confidence);

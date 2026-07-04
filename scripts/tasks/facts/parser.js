@@ -5,6 +5,23 @@ from "./schema.js";
 
 const FLAT_VALUE_CONFIDENCE = 50;
 
+// Models sometimes return literal quote marks (e.g. "''")
+// when instructed that a field "must be ''". A quote-only
+// value is junk and means empty.
+function normalizeValue(raw) {
+
+    const value =
+        raw === undefined ||
+        raw === null
+            ? ""
+            : String(raw).trim();
+
+    return /^["'`]+$/.test(value)
+        ? ""
+        : value;
+
+}
+
 function cleanResponse(
     text
 ) {
@@ -56,7 +73,7 @@ function normalizeFacts(
         if (typeof source !== "object") {
 
             const value =
-                String(source).trim();
+                normalizeValue(source);
 
             result[key].value = value;
             result[key].confidence =
@@ -85,10 +102,7 @@ function normalizeFacts(
                 : source.confidence;
 
         result[key].value =
-            rawValue === undefined ||
-            rawValue === null
-                ? ""
-                : String(rawValue);
+            normalizeValue(rawValue);
 
         const confidence =
             Number(rawConfidence);
