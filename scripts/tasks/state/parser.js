@@ -3,11 +3,17 @@
 import schema
 from "./schema.js";
 
-// The prompt requires these to be populated in every
-// response; their absence means the response is malformed.
+// The prompt requires the first two to be populated in
+// every response, and the override fields to be present
+// (usually as ""); a missing key means the response is
+// malformed.
 const REQUIRED_KEYS = [
     "underwearTop",
-    "underwearBottom"
+    "underwearBottom",
+    "hairColor",
+    "hairStyle",
+    "bodyType",
+    "relationship"
 ];
 
 function cleanResponse(

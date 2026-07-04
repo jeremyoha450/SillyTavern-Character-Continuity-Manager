@@ -26,6 +26,10 @@ const schema = {
     pussyState: { value: "", confidence: 0 },
     pussyCondition: { value: "", confidence: 0 },
     condition: { value: "", confidence: 0 },
+    hairColor: { value: "", confidence: 0 },
+    hairStyle: { value: "", confidence: 0 },
+    bodyType: { value: "", confidence: 0 },
+    relationship: { value: "", confidence: 0 },
     injuries: { value: "", confidence: 0 },
     notes: { value: "", confidence: 0 }
 };

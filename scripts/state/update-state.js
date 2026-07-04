@@ -34,6 +34,19 @@ const TRANSIENT_FIELDS = new Set([
     "positionDetail"
 ]);
 
+// Semi-permanent fields owned by the facts extraction. A
+// non-empty value from the state extraction permanently
+// overrides the stored fact, and the field is flagged in
+// character.overrides so a card re-extract cannot reset it.
+const OVERRIDE_FIELDS = new Set([
+    "hairColor",
+    "hairStyle",
+    "bodyType",
+    "relationship",
+    "penis",
+    "pussy"
+]);
+
 function buildStateBaseline(facts) {
 
     const value = key =>
@@ -73,6 +86,14 @@ function buildStateBaseline(facts) {
         .filter(Boolean)
         .join("; ");
 
+    const hair = [
+        "hairColor",
+        "hairStyle"
+    ]
+        .map(value)
+        .filter(Boolean)
+        .join(", ");
+
     const sections = [
 
         wearing
@@ -89,6 +110,18 @@ function buildStateBaseline(facts) {
 
         value("accessories")
             ? `Accessories: ${value("accessories")}.`
+            : "",
+
+        hair
+            ? `Hair: ${hair}.`
+            : "",
+
+        value("bodyType")
+            ? `Body: ${value("bodyType")}.`
+            : "",
+
+        value("relationship")
+            ? `Relationship: ${value("relationship")}.`
             : "",
 
         anatomy
@@ -242,16 +275,38 @@ export async function updateCharacterStateData(
             mergedState.changes
         );
 
+    const overriddenNow =
+        mergedState.changes
+            .map(change => change.field)
+            .filter(field =>
+                OVERRIDE_FIELDS.has(field)
+            );
+
+    const update = {
+
+        facts:
+            mergedState.data,
+
+        history
+
+    };
+
+    if (overriddenNow.length) {
+
+        update.overrides = {
+            ...(character.overrides || {}),
+            ...Object.fromEntries(
+                overriddenNow.map(
+                    field => [field, true]
+                )
+            )
+        };
+
+    }
+
     updateCharacter(
         id,
-        {
-
-            facts:
-                mergedState.data,
-
-            history
-
-        }
+        update
     );
 
     return {

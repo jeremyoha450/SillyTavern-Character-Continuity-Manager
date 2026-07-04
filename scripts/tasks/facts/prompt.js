@@ -1,38 +1,42 @@
 // scripts/tasks/facts/prompt.js
 
 const SYSTEM_PROMPT = `
-[Pause roleplay. Extract character facts into the schema below.
+[Pause roleplay. Extract the character's PERMANENT and SEMI-PERMANENT facts into the schema below. Changing state (clothing, location, position, mood, accessories, arousal, condition, injuries) is handled by a separate extraction — never include it here.
 
-CONFIDENCE SCALE
-100 = explicitly stated · 75 = strongly implied · 50 = inferred · 25 = weak guess · 0 = unknown/absent
+SOURCES
+- Extract from the character description/card and the messages.
+- Facts explicitly written in the character description count as explicitly stated: confidence 100.
+- 75 = strongly implied · 50 = inferred · 25 = weak guess · 0 = unknown/absent.
 
 RULES
 - Return ONLY valid JSON. No markdown, no code fences, no explanation.
-- Every field appears exactly once. Never duplicate or invent fields.
+- Every field appears exactly once. Never duplicate or invent fields. Output ONLY the fields in SCHEMA.
 - Every value must be a string. Never place an object, array, or nested {value, confidence} structure inside value.
-- If a field has no matching information, leave value as "" and confidence as 0.
+- If a field has no matching information AND no default is given in FIELD GUIDANCE: leave value as "" and confidence as 0.
+- DEFAULTS: where FIELD GUIDANCE gives a default (e.g. "Slim body" if not described), the default MUST be populated at confidence 25 when no information exists. Defaults take priority over the blank rule.
 - Use the most concise value possible.
-- characterName: the character's actual personal name stated in the description. Do not use or infer the SillyTavern card name. Leave blank if no personal name is stated.
-- bodyType describes physical build only (e.g. petite body, athletic body, curvy body, slim body, muscular body). No attractiveness terms (hot, sexy, beautiful, attractive, lithe).
-- skin describes Skin color or fur color only (e.g. White skin, brown skin, olive skin, tan skin, Brown Fur, Black Fur, White Fur). No single word terms (white, black, brown, grey).
-- eye describes eye color only (e.g. blue eyes, brown eyes, green eyes, pink eyes, amber eyes, orange eyes, yellow eyes). No single word terms (green, yellow, brown, grey).
-- mood: the character's current mood at this exact moment in the scene. Infer from tone, body language, dialogue, or context if not stated explicitly.
-- notes: facts that don't fit any field, under 100 words only.
-- moodIntensity: use only one of these exact words: Minimal, Low, Medium, High, Intense, Extreme, Overwhelming — leave blank if not described. Never use a number, decimal, or numeric scale.
-- injuries never contains any reference to intimate or genital areas. Those conditions belong in pussyCondition or penisCondition only.
-- injuries only describes damage to these body parts: head, face, neck, shoulders, arms, hands, wrists, back, stomach, legs, knees, feet. Any injury not involving these exact body parts is omitted from injuries entirely.
-- age must always be a plain number only. Never append 
-  "years old" or any other text to the age value.
+- No attractiveness terms anywhere (hot, sexy, beautiful, attractive, lithe).
+- GENDER EXCLUSIVITY: if the character is female, penis must be "" with confidence 100. If the character is male, pussy and breastSize must be "" with confidence 100. Never populate a field for the wrong gender.
 
 FIELD GUIDANCE
-- injuries: leave blank if not described. Only describe damage to these body parts: head, face, neck, shoulders, arms, hands, wrists, back, stomach, legs, knees, feet. No other body parts are valid in this field. No exceptions.
-- breastSize: female only — physical characteristics only (e.g. Small Breasts, Medium Breasts, Large Breasts, Extra Large Breasts, Huge Breasts) — "Small Breasts" if not described. Always "" if character is male.
-- bodyType: physical characteristics only (e.g. Slim body, curvy body, athletic body) — "Slim body" if not described. Applies to all genders.
-- skin: physical characteristics only (e.g. White skin, brown skin, olive skin, tan skin) — "White skin" if not described. Applies to all genders.
-- skin: physical characteristics only (e.g. Green eyes, brown eyes, yellow eyes, orange eyes) — "Brown eyes" if not described. Applies to all genders.
-- age: number only — never include "years old", "yr", or any 
-  other text. "18" is correct. "18 years old" is wrong.
-
+- characterName: the character's actual personal name stated in the description. Do not use or infer the SillyTavern card name. Leave blank if no personal name is stated.
+- age: a plain number only. "24" is correct. "24 years old" is wrong. Never append "years old", "yr", or any other text.
+- eyeColor: eye color only (e.g. blue eyes, brown eyes, green eyes, pink eyes, amber eyes, orange eyes, yellow eyes). No single word terms (green, yellow, brown, grey) — "Brown eyes" if not described.
+- hairColor: hair color only (e.g. light brown hair, black hair, blonde hair). No single word terms.
+- hairStyle: cut/style only (e.g. high short ponytail, loose waves, buzz cut) — leave blank if not described.
+- hairLength: one of short, medium, long, very long — leave blank if not described.
+- height: as stated (e.g. 5 feet, 170 cm, tall, short) — leave blank if not described.
+- bodyType: physical build only (e.g. petite body, athletic body, curvy body, slim body, muscular body). No attractiveness terms — "Slim body" if not described. Applies to all genders.
+- personality: concise summary of stated personality traits — leave blank if not described.
+- gender: male, female, or as stated — leave blank if not stated or clearly evident.
+- species: e.g. Human, elf, catgirl, android — "Human" if not described, confidence 25.
+- skin: skin color or fur color only (e.g. White skin, brown skin, olive skin, tan skin, Brown Fur, Black Fur, White Fur). No single word terms (white, black, brown, grey) — "White skin" if not described.
+- breastSize: female only — physical characteristics only (e.g. Small Breasts, Medium Breasts, Large Breasts, Extra Large Breasts, Huge Breasts) — "Small Breasts" if female and not described. Always "" with confidence 100 if character is male.
+- buttSize: physical characteristics only (e.g. Small Butt, Medium Butt, Large Butt, Round Butt) — "Medium Butt" if not described. Applies to all genders.
+- relationship: the character's relationship to the user (e.g. Friend, Stranger, Girlfriend, Coworker, Sister-in-law) — leave blank if not stated.
+- penis: male only — permanent physical characteristics only (e.g. Small size, Average size, Large size, Circumcised) — "Average size" if male and not described, confidence 25. Always "" with confidence 100 if character is female. Never include current state (erect, soft) — that belongs to the state extraction.
+- pussy: female only — permanent/semi-permanent physical characteristics only (e.g. Shaved, Trimmed, Natural) — "Shaved" if female and not described, confidence 25. Always "" with confidence 100 if character is male. Never include current state (wet, dry) — that belongs to the state extraction.
+- notes: permanent facts that don't fit any field, under 100 words only. Never include changing state (clothing, location, mood, current actions). Never repeat information already captured in another field.
 
 SCHEMA
 {
@@ -51,25 +55,8 @@ SCHEMA
   "breastSize": {"value": "", "confidence": 0},
   "buttSize": {"value": "", "confidence": 0},
   "relationship": {"value": "", "confidence": 0},
-  "upper": {"value": "", "confidence": 0},
-  "outerwear": {"value": "", "confidence": 0},
-  "lower": {"value": "", "confidence": 0},
-  "footwear": {"value": "", "confidence": 0},
-  "underwearTop": {"value": "", "confidence": 0},
-  "underwearBottom": {"value": "", "confidence": 0},
-  "location": {"value": "", "confidence": 0},
-  "position": {"value": "", "confidence": 0},
-  "area": {"value": "", "confidence": 0},
-  "positionDetail": {"value": "", "confidence": 0},
-  "mood": {"value": "", "confidence": 0},
-  "moodIntensity": {"value": "", "confidence": 0},
-  "accessories": {"value": "", "confidence": 0},
   "penis": {"value": "", "confidence": 0},
-  "penisState": {"value": "", "confidence": 0},
   "pussy": {"value": "", "confidence": 0},
-  "pussyState": {"value": "", "confidence": 0},
-  "condition": {"value": "", "confidence": 0},
-  "injuries": {"value": "", "confidence": 0},
   "notes": {"value": "", "confidence": 0}
 }
 ]`;

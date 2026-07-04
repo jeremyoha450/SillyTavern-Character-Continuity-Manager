@@ -222,11 +222,30 @@ export async function reExtractCharacter(
 				characterNameProtected
 		};
 
+		// Fields changed by a roleplay override must survive
+		// a card re-extract. These act as merge-only locks:
+		// they are never persisted into character.locks, so
+		// future roleplay overrides still work.
+		const mergeLocks = {
+			...extractionLocks
+		};
+
+		for (
+			const [field, overridden]
+			of Object.entries(
+				currentCharacter.overrides || {}
+			)
+		) {
+			if (overridden) {
+				mergeLocks[field] = true;
+			}
+		}
+
 		const mergedFacts =
 			mergeData(
 				existingFacts,
 				facts,
-				extractionLocks
+				mergeLocks
 			);
 
 		const updatedLocks = {
