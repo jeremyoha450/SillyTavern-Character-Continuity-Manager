@@ -1,0 +1,8 @@
+{
+    "name": "sillytavern-character-continuity-manager",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "test": "node --test"
+    }
+}
