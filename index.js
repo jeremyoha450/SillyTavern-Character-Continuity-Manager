@@ -44,6 +44,10 @@ import {
     getDriverSettings
 } from "./scripts/ai/settings.js";
 
+import {
+    loadHeightDefaults
+} from "./scripts/config/height-defaults.js";
+
 registerDriver(
     openAICompatibleDriver
 );
@@ -84,6 +88,10 @@ jQuery(() => {
     console.log(
         "Character Continuity Manager Loaded"
     );
+
+    // Async; getHeightConfig() serves built-in defaults
+    // until the file arrives.
+    loadHeightDefaults();
 
     initUI();
     initializeContinuityManager();

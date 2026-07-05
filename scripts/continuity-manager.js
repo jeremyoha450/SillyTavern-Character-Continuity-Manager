@@ -57,8 +57,18 @@ import {
 
 import {
     postProcessFacts,
-    postProcessState
+    postProcessState,
+    enforceConsistency
 } from "./extraction/post-process.js";
+
+import {
+    isUnderage,
+    UNDERAGE_MESSAGE
+} from "./extraction/age-guard.js";
+
+import {
+    getHeightConfig
+} from "./config/height-defaults.js";
 
 
 let lastAutoStateText = "";
@@ -314,7 +324,13 @@ async function onChatLoaded() {
 							newCharacter.id,
 						characterName
 					}
-				)
+				),
+				{
+					characterId:
+						newCharacter.id,
+					heightConfig:
+						getHeightConfig()
+				}
 			);
 
 		knowledge =
@@ -327,7 +343,13 @@ async function onChatLoaded() {
 				}
 			);
 
-        if (initialStateText.trim()) {
+        // Underage characters keep their facts and knowledge
+        // but never get state extraction (or, downstream,
+        // image prompts).
+        if (
+            initialStateText.trim() &&
+            !isUnderage(facts)
+        ) {
 
             initialState =
                 await extractState(
@@ -399,8 +421,14 @@ ${initialStateText}`,
                 data: mergedFacts.data
             };
 
+    // The merge skips blank extraction fields, letting the
+    // creation template's non-empty confidence-0 defaults
+    // (species, hands) through untouched — enforce rule 5 on
+    // the merged result, not just the extraction output.
     newCharacter.facts =
-		mergedInitialState.data;
+		enforceConsistency(
+			mergedInitialState.data
+		);
 
 	newCharacter.knowledge =
 		knowledge.map(
@@ -434,6 +462,13 @@ ${initialStateText}`,
 	showCCMSuccess(
 		"Character added to CCM"
 	);
+
+	if (isUnderage(newCharacter.facts)) {
+		showCCMToast(
+			UNDERAGE_MESSAGE,
+			"error"
+		);
+	}
 
 	// The panel only exists while the dashboard is open,
 	// so create it if needed before rendering into it.
@@ -672,7 +707,14 @@ async function runAutoUpdates(
                 shouldRefresh =
                     true;
 
-                if (result.changed) {
+                if (result.blocked === "age") {
+
+                    showCCMToast(
+                        UNDERAGE_MESSAGE,
+                        "error"
+                    );
+
+                } else if (result.changed) {
 
                     showCCMToast(
                         "Auto state updated",

@@ -28,6 +28,11 @@ import {
     updateImageRecord
 } from "../image-history.js";
 
+import {
+    isUnderage,
+    UNDERAGE_MESSAGE
+} from "../extraction/age-guard.js";
+
 const STATE_FIELDS = new Set([
     "upper",
     "outerwear",
@@ -660,6 +665,13 @@ export async function createCharacterImagePrompt(
     if (!character) {
         showCCMError(
             "Character not found."
+        );
+        return;
+    }
+
+    if (isUnderage(character.facts)) {
+        showCCMError(
+            UNDERAGE_MESSAGE
         );
         return;
     }

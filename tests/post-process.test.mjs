@@ -1,8 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
+import { readFile } from "node:fs/promises";
+
 import {
-    postProcessState
+    postProcessState,
+    enforceConsistency
 } from "../scripts/extraction/post-process.js";
 
 function field(value, confidence = 80) {
@@ -250,6 +253,214 @@ test(
         assert.equal(
             result.leftHand.confidence,
             25
+        );
+
+    }
+);
+
+// --- Expression flush ---
+
+test(
+    "blanks a flush-only expression and routes Blushing to condition",
+    () => {
+
+        const result = postProcessState({
+            expression: field("flushed", 80),
+            condition: field("", 0)
+        });
+
+        assert.equal(
+            result.expression.value,
+            ""
+        );
+        assert.equal(
+            result.expression.confidence,
+            0
+        );
+        assert.equal(
+            result.condition.value,
+            "Blushing"
+        );
+        assert.equal(
+            result.condition.confidence,
+            25
+        );
+
+    }
+);
+
+test(
+    "removes flush words but keeps the rest of the expression",
+    () => {
+
+        const result = postProcessState({
+            expression: field("Flushed and smiling", 85),
+            condition: field("Tired", 70)
+        });
+
+        assert.equal(
+            result.expression.value,
+            "smiling"
+        );
+        assert.equal(
+            result.expression.confidence,
+            85
+        );
+        assert.equal(
+            result.condition.value,
+            "Tired, Blushing"
+        );
+
+    }
+);
+
+test(
+    "does not duplicate Blushing when condition already mentions it",
+    () => {
+
+        const result = postProcessState({
+            expression: field("pink cheeks", 75),
+            condition: field("blushing hard", 60)
+        });
+
+        assert.equal(
+            result.expression.value,
+            "cheeks"
+        );
+        assert.equal(
+            result.condition.value,
+            "blushing hard"
+        );
+
+    }
+);
+
+test(
+    "collapses separators left behind by multiple flush words",
+    () => {
+
+        const result = postProcessState({
+            expression: field("pale, red, trembling", 80),
+            condition: field("", 0)
+        });
+
+        assert.equal(
+            result.expression.value,
+            "trembling"
+        );
+        assert.equal(
+            result.condition.value,
+            "Blushing"
+        );
+
+    }
+);
+
+test(
+    "flush words only match on word boundaries",
+    () => {
+
+        const result = postProcessState({
+            expression: field("bored and tired", 80),
+            condition: field("", 0)
+        });
+
+        assert.equal(
+            result.expression.value,
+            "bored and tired"
+        );
+        assert.equal(
+            result.condition.value,
+            ""
+        );
+
+    }
+);
+
+// --- Consistency on merged creation data ---
+
+test(
+    "enforceConsistency bumps non-empty values stuck at confidence 0",
+    () => {
+
+        const result = enforceConsistency({
+            leftHand: {
+                value: "Left hand by side",
+                confidence: 0
+            },
+            species: {
+                value: "Human",
+                confidence: 0
+            },
+            upper: {
+                value: "",
+                confidence: 40
+            },
+            eyeColor: {
+                value: "Brown eyes",
+                confidence: 80
+            }
+        });
+
+        assert.equal(
+            result.leftHand.confidence,
+            25
+        );
+        assert.equal(
+            result.species.confidence,
+            25
+        );
+        assert.equal(
+            result.upper.confidence,
+            0
+        );
+        assert.equal(
+            result.eyeColor.confidence,
+            80
+        );
+
+    }
+);
+
+test(
+    "enforceConsistency clones its input",
+    () => {
+
+        const input = {
+            species: {
+                value: "Human",
+                confidence: 0
+            }
+        };
+
+        enforceConsistency(input);
+
+        assert.equal(
+            input.species.confidence,
+            0
+        );
+
+    }
+);
+
+test(
+    "character creation runs enforceConsistency on the merged facts",
+    async () => {
+
+        // continuity-manager.js imports SillyTavern core and
+        // cannot be loaded under node, so the wiring is
+        // asserted at the source level.
+        const source = await readFile(
+            new URL(
+                "../scripts/continuity-manager.js",
+                import.meta.url
+            ),
+            "utf8"
+        );
+
+        assert.match(
+            source,
+            /enforceConsistency\(\s*mergedInitialState\.data\s*\)/
         );
 
     }

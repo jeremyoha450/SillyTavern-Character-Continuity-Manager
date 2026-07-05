@@ -34,6 +34,14 @@ import {
 } from "../extraction/post-process.js";
 
 import {
+    UNDERAGE_MESSAGE
+} from "../extraction/age-guard.js";
+
+import {
+    getHeightConfig
+} from "../config/height-defaults.js";
+
+import {
     showCCMStatus,
     showCCMSuccess,
     showCCMError
@@ -103,6 +111,19 @@ export async function updateCharacterState(
 				id,
 				messages
 			);
+
+		if (result.blocked === "age") {
+
+			showCCMError(
+				UNDERAGE_MESSAGE
+			);
+
+			renderCharacterDashboard(
+				id
+			);
+
+			return;
+		}
 
 		if (!result.changed) {
 
@@ -204,7 +225,10 @@ export async function reExtractCharacter(
 				{
 					gender:
 						currentCharacter.facts
-							?.gender?.value
+							?.gender?.value,
+					characterId: id,
+					heightConfig:
+						getHeightConfig()
 				}
 			);
 

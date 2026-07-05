@@ -1,0 +1,18 @@
+{
+    "defaults": {
+        "female": { "short": 152, "average": 163, "tall": 172 },
+        "male": { "short": 165, "average": 176, "tall": 188 }
+    },
+    "speciesOverrides": {
+        "example-species": {
+            "female": { "short": 0, "average": 0, "tall": 0 },
+            "male": { "short": 0, "average": 0, "tall": 0 }
+        }
+    },
+    "varietyCm": 0,
+    "format": "{cm} cm",
+    "keywords": {
+        "short": ["short", "petite", "small", "tiny"],
+        "tall": ["tall", "towering", "lanky", "statuesque"]
+    }
+}

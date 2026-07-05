@@ -24,6 +24,10 @@ import {
     postProcessState
 } from "../extraction/post-process.js";
 
+import {
+    isUnderage
+} from "../extraction/age-guard.js";
+
 // Momentary fields that must always be re-derived from the
 // new messages. They are stripped from the baseline sent to
 // the LLM, never from the stored state itself.
@@ -167,6 +171,18 @@ export async function updateCharacterStateData(
         throw new Error(
             "Character not found."
         );
+
+    }
+
+    if (isUnderage(character.facts)) {
+
+        return {
+
+            changed: false,
+            changes: [],
+            blocked: "age"
+
+        };
 
     }
 
