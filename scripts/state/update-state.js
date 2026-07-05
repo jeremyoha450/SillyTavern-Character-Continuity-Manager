@@ -20,6 +20,10 @@ import {
 import stateSchema
 from "../tasks/state/schema.js";
 
+import {
+    postProcessState
+} from "../extraction/post-process.js";
+
 // Momentary fields that must always be re-derived from the
 // new messages. They are stripped from the baseline sent to
 // the LLM, never from the stored state itself.
@@ -238,15 +242,23 @@ export async function updateCharacterStateData(
         );
 
     const state =
-        await extractState(
+        postProcessState(
+            await extractState(
+                {
+                    baseline,
+                    messages
+                },
+                {
+                    characterId: id,
+                    characterName:
+                        character.name
+                }
+            ),
             {
-                baseline,
-                messages
-            },
-            {
-                characterId: id,
-                characterName:
-                    character.name
+                gender:
+                    currentFacts.gender?.value,
+                previousFacts:
+                    currentFacts
             }
         );
 

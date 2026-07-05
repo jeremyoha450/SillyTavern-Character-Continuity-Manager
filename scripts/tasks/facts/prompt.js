@@ -14,6 +14,8 @@ RULES
 - Every value must be a string. Never place an object, array, or nested {value, confidence} structure inside value.
 - If a field has no matching information AND no default is given in FIELD GUIDANCE: leave value as "" and confidence as 0.
 - DEFAULTS: where FIELD GUIDANCE gives a default (e.g. "Slim body" if not described), the default MUST be populated at confidence 25 when no information exists. Defaults take priority over the blank rule.
+- Never output placeholder words such as "unknown", "N/A", "none", "unspecified", or "not stated" as a value. If information is absent, the value is "" — the FINAL CHECK will then apply the field's default.
+- FORMAT CONSISTENCY: values must match the structure of the examples exactly. Where guidance requires a suffix (eyes, hair, skin, body, Breasts, Butt), the suffix is mandatory — a bare adjective is always wrong.
 - Use the most concise value possible.
 - No attractiveness terms anywhere (hot, sexy, beautiful, attractive, lithe).
 - GENDER EXCLUSIVITY: if the character is female, penis must be "" with confidence 100. If the character is male, pussy and breastSize must be "" with confidence 100. Never populate a field for the wrong gender.
@@ -21,22 +23,27 @@ RULES
 FIELD GUIDANCE
 - characterName: the character's actual personal name stated in the description. Do not use or infer the SillyTavern card name. Leave blank if no personal name is stated.
 - age: a plain number only. "24" is correct. "24 years old" is wrong. Never append "years old", "yr", or any other text.
-- eyeColor: eye color only (e.g. blue eyes, brown eyes, green eyes, pink eyes, amber eyes, orange eyes, yellow eyes). No single word terms (green, yellow, brown, grey) — "Brown eyes" if not described.
-- hairColor: hair color only (e.g. light brown hair, black hair, blonde hair). No single word terms.
+- eyeColor: eye color only, always ending in "eyes" (e.g. blue eyes, dark brown eyes, green eyes, pink eyes, amber eyes, orange eyes, yellow eyes). "dark brown eyes" is correct, "dark brown" is wrong — "Brown eyes" if not described.
+- hairColor: hair color only, always ending in "hair" (e.g. light brown hair, black hair, blonde hair). "black hair" is correct, "black" is wrong.
 - hairStyle: cut/style only (e.g. high short ponytail, loose waves, buzz cut) — leave blank if not described.
 - hairLength: one of short, medium, long, very long — leave blank if not described.
 - height: as stated (e.g. 5 feet, 170 cm, tall, short) — leave blank if not described.
-- bodyType: physical build only (e.g. petite body, athletic body, curvy body, slim body, muscular body). No attractiveness terms — "Slim body" if not described. Applies to all genders.
+- bodyType: physical build only, always ending in "body" (e.g. petite body, athletic body, curvy body, slim body, muscular body). "slim body" is correct, "Slim" is wrong. No attractiveness terms — "Slim body" if not described. Applies to all genders.
 - personality: concise summary of stated personality traits — leave blank if not described.
 - gender: male, female, or as stated — leave blank if not stated or clearly evident.
 - species: e.g. Human, elf, catgirl, android — "Human" if not described, confidence 25.
-- skin: skin color or fur color only (e.g. White skin, brown skin, olive skin, tan skin, Brown Fur, Black Fur, White Fur). No single word terms (white, black, brown, grey) — "White skin" if not described.
+- skin: skin color or fur color only, always ending in "skin" or "Fur" (e.g. White skin, brown skin, olive skin, tan skin, Brown Fur, Black Fur, White Fur). "olive skin" is correct, "olive" is wrong — "White skin" if not described.
 - breastSize: female only — physical characteristics only (e.g. Small Breasts, Medium Breasts, Large Breasts, Extra Large Breasts, Huge Breasts) — "Small Breasts" if female and not described. Always "" with confidence 100 if character is male.
 - buttSize: physical characteristics only (e.g. Small Butt, Medium Butt, Large Butt, Round Butt) — "Medium Butt" if not described. Applies to all genders.
 - relationship: the character's relationship to the user (e.g. Friend, Stranger, Girlfriend, Coworker, Sister-in-law) — leave blank if not stated.
 - penis: male only — permanent physical characteristics only (e.g. Small size, Average size, Large size, Circumcised) — "Average size" if male and not described, confidence 25. Always "" with confidence 100 if character is female. Never include current state (erect, soft) — that belongs to the state extraction.
 - pussy: female only — permanent/semi-permanent physical characteristics only (e.g. Shaved, Trimmed, Natural) — "Shaved" if female and not described, confidence 25. Always "" with confidence 100 if character is male. Never include current state (wet, dry) — that belongs to the state extraction.
 - notes: permanent facts that don't fit any field, under 100 words only. Never include changing state (clothing, location, mood, current actions). Never repeat information already captured in another field.
+
+FINAL CHECK — do this before returning the JSON
+1. DEFAULT SWEEP: check each of these fields — if it is empty OR contains a placeholder word (unknown, N/A, none, unspecified), replace it with its default now at confidence 25: eyeColor → "Brown eyes", bodyType → "Slim body", skin → "White skin", buttSize → "Medium Butt", species → "Human", breastSize → "Small Breasts" (female only), pussy → "Shaved" (female only), penis → "Average size" (male only). Gender exclusivity still applies: wrong-gender fields stay "" with confidence 100.
+2. SUFFIX CHECK: do eyeColor, hairColor, skin, and bodyType end in their required suffix (eyes / hair / skin or Fur / body)? If any is a bare adjective, append the suffix now.
+3. Is age a plain number with no extra text? If not, strip everything but the number.
 
 SCHEMA
 {

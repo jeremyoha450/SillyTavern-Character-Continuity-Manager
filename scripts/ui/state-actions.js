@@ -30,6 +30,10 @@ import {
 } from "../knowledge/update-knowledge.js";
 
 import {
+    postProcessFacts
+} from "../extraction/post-process.js";
+
+import {
     showCCMStatus,
     showCCMSuccess,
     showCCMError
@@ -188,12 +192,19 @@ export async function reExtractCharacter(
 			);
 
 		const facts =
-			await extractFacts(
-				character.data?.description || "",
+			postProcessFacts(
+				await extractFacts(
+					character.data?.description || "",
+					{
+						characterId: id,
+						characterName:
+							currentCharacter.name
+					}
+				),
 				{
-					characterId: id,
-					characterName:
-						currentCharacter.name
+					gender:
+						currentCharacter.facts
+							?.gender?.value
 				}
 			);
 

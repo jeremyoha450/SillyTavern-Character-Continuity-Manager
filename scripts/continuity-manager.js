@@ -55,6 +55,11 @@ import {
     generateHash
 } from "./hash.js";
 
+import {
+    postProcessFacts,
+    postProcessState
+} from "./extraction/post-process.js";
+
 
 let lastAutoStateText = "";
 let autoStateCounter = {};
@@ -300,14 +305,16 @@ async function onChatLoaded() {
 	try {
 
 		facts =
-			await execute(
-				"facts",
-				character.data?.description || "",
-				{
-					characterId:
-						newCharacter.id,
-					characterName
-				}
+			postProcessFacts(
+				await execute(
+					"facts",
+					character.data?.description || "",
+					{
+						characterId:
+							newCharacter.id,
+						characterName
+					}
+				)
 			);
 
 		knowledge =
@@ -376,7 +383,16 @@ ${initialStateText}`,
         initialState
             ? mergeData(
                 mergedFacts.data,
-                initialState,
+                postProcessState(
+                    initialState,
+                    {
+                        gender:
+                            mergedFacts.data
+                                .gender?.value,
+                        previousFacts:
+                            mergedFacts.data
+                    }
+                ),
                 newCharacter.locks
             )
             : {
