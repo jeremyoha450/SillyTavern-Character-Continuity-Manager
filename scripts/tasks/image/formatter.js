@@ -118,12 +118,6 @@ function escapeParentheses(tag) {
 }
 
 function normalizeVisualTag(tag) {
-    const ageMatch = tag.match(/^(\d{1,3}) years? old$/);
-
-    if (ageMatch && Number(ageMatch[1]) >= 18) {
-        return ["adult woman"];
-    }
-
     if (
         /^looking at (?:the )?(?:user|viewer)[’']s shoes$/.test(tag)
     ) {

@@ -170,16 +170,16 @@ test("the full nude trace formats without contradictions", () => {
 
     assert.equal(
         result.positive,
-        "completely nude, 1girl, solo, petite, adult woman, straight long black hair, brown eyes, white skin, small breasts, small butt, barefoot, standing, body facing viewer, on the rug, left hand by side, right hand by side, head down, front view, looking down, biting lip, embarrassed, flushed, indoors, detailed background"
+        "completely nude, 1girl, solo, petite, 23 years old, straight long black hair, brown eyes, white skin, small breasts, small butt, barefoot, standing, body facing viewer, on the rug, left hand by side, right hand by side, head down, front view, looking down, biting lip, embarrassed, flushed, indoors, detailed background"
     );
 });
 
-test("tag formatting reinforces an explicitly adult age", () => {
+test("tag formatting passes age tags through unchanged", () => {
     const result = formatImagePrompt(
         { positive: "1girl, petite, 23 years old" },
         tagPreset.id,
         tagPreset
     );
 
-    assert.equal(result.positive, "1girl, petite, adult woman");
+    assert.equal(result.positive, "1girl, petite, 23 years old");
 });
