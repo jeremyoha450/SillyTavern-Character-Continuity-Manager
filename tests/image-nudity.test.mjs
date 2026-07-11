@@ -144,6 +144,114 @@ test("the backstop leaves a clothed prompt alone", () => {
     assert.equal(result.positive, parsed.positive);
 });
 
+test("a nude female's anatomy state becomes visible tags", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, standing", negative: "" },
+        {
+            upper: "no shirt",
+            lower: "no shorts",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyState: "Wet"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "completely nude, nipples, pussy, no pubic hair, pussy juice, 1girl, solo, standing"
+    );
+});
+
+test("a nude male's anatomy state becomes visible tags without nipples", () => {
+    const result = applyNudityBackstop(
+        { positive: "1boy, solo, standing", negative: "" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no singlet",
+            underwearBottom: "no underwear",
+            penis: "Large size",
+            penisState: "Erect"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "completely nude, penis, large penis, erection, 1boy, solo, standing"
+    );
+});
+
+test("a topless female gets nipples but no lower anatomy tags", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, blue skirt", negative: "" },
+        {
+            upper: "no shirt",
+            lower: "blue skirt",
+            underwearTop: "no bra",
+            underwearBottom: "white panties",
+            pussy: "Shaved",
+            pussyState: "Wet"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "topless, nipples, 1girl, solo, blue skirt"
+    );
+});
+
+test("anatomy tags already in the prompt are not duplicated", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "completely nude, nipples, pussy, 1girl, solo, standing",
+            negative: ""
+        },
+        {
+            upper: "no shirt",
+            lower: "no shorts",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyState: "Wet"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "no pubic hair, pussy juice, completely nude, nipples, pussy, 1girl, solo, standing"
+    );
+});
+
+test("anatomy sentences are appended in natural-language mode", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "an anime-style digital illustration of a young woman standing on a rug.",
+            negative: ""
+        },
+        {
+            upper: "no shirt",
+            lower: "no shorts",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyState: "Wet"
+        },
+        nlPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "an anime-style digital illustration of a young woman standing on a rug. The character is completely nude. Her nipples and smooth shaved pussy, glistening wet are fully visible."
+    );
+});
+
 test("the backstop appends a sentence in natural-language mode", () => {
     const result = applyNudityBackstop(
         {
