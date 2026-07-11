@@ -1,7 +1,8 @@
 // scripts/ui/image-prompt.js
 
 import {
-    getCharacter
+    getCharacter,
+    getScopedCharacter
 } from "../database.js";
 
 import {
@@ -19,6 +20,10 @@ import {
 } from "../tasks/image/formatter.js";
 
 import {
+    applyNudityBackstop
+} from "../tasks/image/nudity.js";
+
+import {
     getImageGenerationSettings,
     getImagePromptPresetSettings
 } from "../ai/settings.js";
@@ -29,9 +34,13 @@ import {
 } from "../image-history.js";
 
 import {
-    isUnderage,
-    UNDERAGE_MESSAGE
-} from "../extraction/age-guard.js";
+    isCharacterInCurrentContext
+} from "../group-context.js";
+
+import {
+    generateWithSillyTavernImage,
+    getSillyTavernImageSetupError
+} from "../sillytavern-image.js";
 
 const STATE_FIELDS = new Set([
     "upper",
@@ -110,75 +119,6 @@ function getCurrentContinuity(
 
 }
 
-function quoteSlashValue(value) {
-    return JSON.stringify(
-        String(value || "")
-    );
-}
-
-function normalizeGeneratedImageUrl(value) {
-    const imageUrl =
-        String(value || "").trim();
-
-    if (!imageUrl) {
-        throw new Error(
-            "SillyTavern did not return an image URL."
-        );
-    }
-
-    const parsed =
-        new URL(imageUrl, location.origin);
-
-    if (![
-        "http:",
-        "https:"
-    ].includes(parsed.protocol)) {
-        throw new Error(
-            "SillyTavern returned an unsupported image URL."
-        );
-    }
-
-    return imageUrl;
-}
-
-function getSillyTavernImageSetupError() {
-    const context =
-        SillyTavern.getContext();
-
-    if (
-        typeof context
-            ?.executeSlashCommandsWithOptions !==
-            "function" ||
-        !document.body.classList.contains("sd")
-    ) {
-        return "SillyTavern Image Generation is not available. Enable its Image Generation extension first.";
-    }
-
-    const settings =
-        context.extensionSettings?.sd;
-
-    if (!settings?.source) {
-        return "SillyTavern Image Generation is not configured. Select and configure an image source in SillyTavern first.";
-    }
-
-    const selectedModel =
-        String(
-            settings.source === "huggingface"
-                ? settings.huggingface_model_id || ""
-                : settings.model ||
-                    document.querySelector(
-                        "#sd_model"
-                    )?.value ||
-                    ""
-        ).trim();
-
-    if (!selectedModel) {
-        return "SillyTavern Image Generation is not configured. Connect its image source and select a model first.";
-    }
-
-    return "";
-}
-
 async function generateWithSillyTavern(
     characterId,
     positive,
@@ -190,63 +130,19 @@ async function generateWithSillyTavern(
     const character =
         getCharacter(characterId);
 
-    const activeCharacter =
-        context?.characters?.[
-            context.characterId
-        ];
-
-    const sameCharacter =
-        !!character &&
-        !!activeCharacter &&
-        (
-            character.avatar &&
-            activeCharacter.avatar
-                ? character.avatar ===
-                    activeCharacter.avatar
-                : character.name ===
-                    activeCharacter.name
-        );
-
-    if (!sameCharacter) {
+    if (
+        !character ||
+        !isCharacterInCurrentContext(
+            context,
+            character
+        )
+    ) {
         throw new Error(
-            "Open this character's SillyTavern chat before generating an image."
+            "Open a chat or group containing this character before generating an image."
         );
     }
 
-    const execute =
-        context
-            ?.executeSlashCommandsWithOptions;
-
-    if (typeof execute !== "function") {
-        throw new Error(
-            "This SillyTavern version does not expose slash-command execution."
-        );
-    }
-
-    const negativeArgument =
-        negative
-            ? ` negative=${quoteSlashValue(negative)}`
-            : "";
-
-    const command =
-        `/sd quiet=true${negativeArgument} ${quoteSlashValue(positive)}`;
-
-    const result =
-        await execute(command, {
-            handleExecutionErrors: true,
-            source: "CCM"
-        });
-
-    if (result?.isError) {
-        throw new Error(
-            result.errorMessage ||
-            "SillyTavern image generation failed."
-        );
-    }
-
-    return normalizeGeneratedImageUrl(
-        result?.pipe
-    );
+    return generateWithSillyTavernImage(positive, negative);
 }
 
 function showImagePrompt(
@@ -255,7 +151,8 @@ function showImagePrompt(
     prompt,
     {
         recordId = null,
-        onChanged = null
+        onChanged = null,
+        groupId = ""
     } = {}
 ) {
 
@@ -364,7 +261,8 @@ function showImagePrompt(
                 negative:
                     negativeTextarea
                         ?.value.trim() || ""
-            }
+            },
+            groupId
         );
     };
 
@@ -567,7 +465,8 @@ function showImagePrompt(
                                 positive,
                                 negative,
                                 status: "generating"
-                            }
+                            },
+                            groupId
                         );
 
                     recordId = record.id;
@@ -580,7 +479,8 @@ function showImagePrompt(
                             negative,
                             status: "generating",
                             error: ""
-                        }
+                        },
+                        groupId
                     );
                 }
 
@@ -614,7 +514,8 @@ function showImagePrompt(
                             status: "generated",
                             error: "",
                             generatedAt: Date.now()
-                        }
+                        },
+                        groupId
                     );
 
                     hideCCMStatus();
@@ -635,7 +536,8 @@ function showImagePrompt(
                             error:
                                 error.message ||
                                 "Image generation failed."
-                        }
+                        },
+                        groupId
                     );
 
                     button.disabled = false;
@@ -656,22 +558,19 @@ function showImagePrompt(
 
 export async function createCharacterImagePrompt(
     id,
-    onChanged = null
+    onChanged = null,
+    groupId = ""
 ) {
 
     const character =
-        getCharacter(id);
+        getScopedCharacter(
+            id,
+            groupId
+        );
 
     if (!character) {
         showCCMError(
             "Character not found."
-        );
-        return;
-    }
-
-    if (isUnderage(character.facts)) {
-        showCCMError(
-            UNDERAGE_MESSAGE
         );
         return;
     }
@@ -719,15 +618,17 @@ export async function createCharacterImagePrompt(
 
     try {
 
+        const continuity =
+            getCurrentContinuity(
+                character
+            );
+
         const parsedPrompt =
             await generateImagePrompt(
                 {
                     presetId,
                     preset,
-                    continuity:
-                        getCurrentContinuity(
-                            character
-                        )
+                    continuity
                 },
                 {
                     characterId: id,
@@ -738,7 +639,13 @@ export async function createCharacterImagePrompt(
 
         const prompt =
             formatImagePrompt(
-                parsedPrompt,
+                applyNudityBackstop(
+                    parsedPrompt,
+                    continuity
+                        .primaryCharacter
+                        .state,
+                    preset
+                ),
                 presetId,
                 preset
             );
@@ -755,7 +662,8 @@ export async function createCharacterImagePrompt(
                         prompt.positive,
                     negative:
                         prompt.negative
-                }
+                },
+                groupId
             );
 
         hideCCMStatus();
@@ -768,7 +676,8 @@ export async function createCharacterImagePrompt(
             prompt,
             {
                 recordId: record.id,
-                onChanged
+                onChanged,
+                groupId
             }
         );
 
@@ -780,7 +689,9 @@ export async function createCharacterImagePrompt(
         );
 
         showCCMError(
-            "Failed to generate image prompt."
+            "Failed to generate image prompt.",
+            error,
+            "Image prompt generation"
         );
 
     }
@@ -790,10 +701,14 @@ export async function createCharacterImagePrompt(
 export function openSavedImagePrompt(
     characterId,
     record,
-    onChanged = null
+    onChanged = null,
+    groupId = ""
 ) {
     const character =
-        getCharacter(characterId);
+        getScopedCharacter(
+            characterId,
+            groupId
+        );
 
     if (!character || !record) return;
 
@@ -813,7 +728,8 @@ export function openSavedImagePrompt(
                 record.imageUrl
                     ? null
                     : record.id,
-            onChanged
+            onChanged,
+            groupId
         }
     );
 }

@@ -2,37 +2,59 @@ const fluxPreset = {
     id: "flux",
     label: "Flux",
     mode: "natural-language",
-    systemPrompt: `
-[Pause roleplay. Create a prompt for a FLUX or similar natural-language anime image model.
+    systemPrompt: `[
+Pause roleplay. Create a prompt for Flux (a natural-language image model with strong prompt adherence and no negative prompt).
 RULES
 - Return only valid JSON matching this exact shape:
-  {"prompt":"descriptive prose paragraph"}
-- Write the prompt as natural language prose sentences, not comma-separated tags.
-- Do not use Danbooru-style tags, underscores, or tag syntax.
-- Do not use weighting syntax or parentheses for emphasis.
-- Do not use prefixes such as "by", "artist:", or "character:".
-- Preserve the supplied character facts and current state exactly.
-- Do not include a character name, series name, copyright tag, or franchise tag.
-- Include only supported details. Do not invent physical traits, clothing, accessories, mood, pose, location, character series, or artist.
-- Omit empty, unknown, non-visual, confidence, file metadata, and invalid details.
+  {"prompt":"natural language description"}
+- Write one flowing paragraph of 3-6 sentences in plain English, present tense. Do not output Danbooru tags, tag lists, or comma-chained fragments.
+- Write literal parentheses normally inside the JSON string. CCM escapes them after parsing. Do not use weighting syntax; Flux does not support it.
+- Do not reference artists, "in the style of", or franchises.
+- Flux has no negative prompt, so state everything positively. Describe what IS in the image; never write "no", "without", or "not" phrases, as Flux may render the mentioned object anyway.
+- Begin with the medium and subject: "an anime-style digital illustration of a ..." followed by appearance, then attire, then pose and expression, then setting, then lighting and atmosphere.
+- Use spatial language deliberately (in the foreground, behind her, to her left, in front of the window); Flux follows spatial descriptions well.
+- Preserve the supplied character facts and current state exactly, EXCEPT where the COVERAGE AND ANATOMY RULES require omission. Coverage rules always override state preservation.
+- Do not include a character name, series name, or franchise reference; describe appearance instead.
+- Include only supported details. Do not invent physical traits, clothing, accessories, mood, pose, or artist.
+- Omit empty, unknown, non-visual, confidence, and file metadata details.
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- If the state specifies a position, pose, head position, or eye direction, describe it exactly. Only when the state specifies none of these, describe the character facing the viewer and looking at the viewer.
-- Describe details in this order: subject, appearance, attire, pose and expression, setting, lighting and color, composition.
-- Keep related appearance and clothing descriptions together.
-- Do not use quality booster tags. FLUX responds to descriptive language instead. Use terms such as highly detailed, sharp focus, cinematic lighting, anime illustration style where appropriate.
-- Never describe clothing being removed, lifted, pulled, or displaced unless the state explicitly describes that action.
-- Do not infer or imply any action not present in state. Do not describe any behaviour, interaction, or clothing change beyond what is explicitly described.
-- Only describe anatomy for body parts that are explicitly visible given the current clothing state. If a body part is covered by any clothing item, do not describe that anatomy at all.
-- Do not describe or imply see-through clothing, transparent fabric, or visible anatomy through clothing unless the state explicitly describes that condition.
+- If the state specifies a position, pose, head position, or eye direction, describe it exactly. Only when the state specifies none of these, default to: facing the viewer, looking at the viewer.
+- Do not add quality boilerplate (masterpiece, best quality, 8k, award-winning); Flux ignores it and the preset formatter handles style terms.
+- Avoid contradictory and redundant descriptions.
+SETTING RULES
+- The location and area fields are MANDATORY. Always dedicate at least one full sentence to the setting; never omit it, no matter how many other state fields are present.
+- Convert generic locations into the most specific environment implied by the location and area together (location "House" + area "On the sofa" -> "she sits on a couch in a warmly lit living room").
+- Make clear whether the scene is indoors or outdoors when a location is supplied.
+- Include two or three concrete background details consistent with the location (a window with curtains, a coffee table, cushions, wall art, a street lamp, trees) so the model renders a complete environment. Flux rewards specific environmental detail.
+- End the paragraph with one sentence on lighting and atmosphere consistent with the location and mood.
+DESCRIPTION NORMALIZATION RULES
+- Convert measurements and non-visual facts into visual descriptions: 150 cm + slim -> "petite and slim"; ages are never stated as numbers, describe as "young woman" or "young man".
+- Map mood words to visible expressions and body language: overwhelmed or pleading -> "a worried, tearful expression, lips slightly parted"; nervous -> "a nervous expression, eyes averted".
+- Describe hands, head position, and gaze exactly as supplied, in natural phrasing ("her hands are clenched into fists on her lap, her head lowered while her eyes look up toward the viewer").
+CLOTHING AND ACTION RULES
+- Never describe clothing being pulled, lifted, removed, or displaced unless the state explicitly describes that action.
+- Do not infer or imply any action not present in state. Omit anything that adds behaviour, interaction, or clothing change beyond what is explicitly described.
+COVERAGE AND ANATOMY RULES
+- COVERAGE RULES OVERRIDE ALL OTHER RULES, including the rule to preserve state exactly. When state preservation and coverage conflict, coverage wins.
+- Default assumption: every body part is covered unless the state explicitly says it is bare, exposed, uncovered, or visible. Absence of information about a body part always means covered, never exposed.
+- Removed clothing is recorded as explicit "no <garment>" state values ("no shirt", "no bra", "no panties", "no shorts"). These explicitly state the area is bare — they are NOT missing information, and the covered-by-default assumption does not apply to them. Never invent replacement clothing for a removed garment. When every clothing and underwear field records its garment as absent, describe the character as completely nude, stated positively ("she is completely nude") to satisfy the no-negation rule; if only part of the body is bare, describe that part as bare (topless, bare below the waist, wearing only underwear).
+- If the state describes the condition, sensation, arousal, wetness, irritation, injury, or appearance of an intimate body part that is currently covered by clothing, omit every mention of that body part and its condition entirely. A covered body part contributes zero words to the prompt, regardless of how much detail the state provides about it.
+- Never translate internal, physiological, or sensory state details (arousal, wetness, soreness, swelling, heat) into visible descriptions when the affected area is covered. These are non-visual details for a clothed character.
+- Never describe intimate anatomy as visible (chest, genitals, buttocks, navel, groin, or any intimate body part) unless the state explicitly and unambiguously describes that exact part as exposed or nude.
+- Never mention underwear or its absence. Because Flux has no negative prompt and renders mentioned objects, writing "no bra" or "no panties" is doubly forbidden: it violates coverage AND the no-negation rule. Simply describe the outer clothing.
+- Body proportion descriptions through clothing (petite, slim, curvy) are permitted only if supplied in facts or state, and never imply exposure.
+- Never describe partial exposure (cleavage, visible underwear, bare midriff, bare shoulders, bare legs, wardrobe malfunctions, clothing slipping) unless the state explicitly describes that exact detail as visible. Exception: footwear state "barefoot" may be described when explicitly supplied.
+- Never describe clothing as see-through, transparent, wet, or skin-tight in a way that reveals anatomy unless the state explicitly describes that condition.
+- Do not describe the character as nude, partially clothed, or in underwear unless the state explicitly describes that condition.
+- Do not describe clothing as revealing or skimpy unless the state explicitly describes that clothing style.
+- General condition details (a light sheen of sweat on her face, blushing, trembling) are allowed only when they describe visibly apparent effects on exposed skin or the face, not as a proxy for covered-area conditions.
+- If any rule conflict arises, resolve it in favor of more coverage and less anatomy.
+GENERAL RULES
 - Use personality or relationship details only when they have a clear visible effect on expression or body language.
-- Do not describe the character as nude, naked, topless, bottomless, or undressed unless the state explicitly describes that condition.
-- If only one character is described, make clear this is a single subject scene.
-- Do not describe clothing as revealing, skimpy, or partially covering unless the state explicitly describes that clothing style.
-- If the state includes any clothing items, always describe the character as clothed.
-
-Use clear descriptive prose with subject, appearance, clothing, pose, expression, environment, composition, and lighting. Return only valid JSON: {"prompt":"natural-language prompt"}.]`,
+- If only one character is described, make clear she or he is alone in the scene; never introduce other people.
+]`,
     prefix: "",
     suffix: "",
     qualityTags: [],

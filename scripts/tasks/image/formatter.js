@@ -8,10 +8,90 @@ const INVALID_META_TAGS = new Set([
     "commentary request"
 ]);
 
+const PRIMARY_POSTURE_PATTERN =
+    /^(standing|sitting|seated|kneeling|lying|reclining|squatting)\b/i;
+
+const POSTURE_DETAILS = {
+    standing: /\b(?:knees? (?:drawn |pulled )?up|knees to (?:the |her |his |their )?chest|hugging (?:own |her |his |their )?knees|cross-legged|fetal position)\b/i,
+    sitting: /\bstanding upright\b|\blying on\b/i,
+    kneeling: /\bstanding upright\b|\bsitting cross-legged\b|\blying on\b/i,
+    lying: /\bstanding upright\b|\bsitting cross-legged\b/i,
+    reclining: /\bstanding upright\b/i,
+    squatting: /\bstanding upright\b|\bsitting cross-legged\b|\blying on\b/i
+};
+
+function postureKind(tag) {
+    const match = tag.match(PRIMARY_POSTURE_PATTERN);
+    return match?.[1]?.toLowerCase() === "seated"
+        ? "sitting"
+        : match?.[1]?.toLowerCase() || "";
+}
+
+function locationFromRejectedPosture(tag) {
+    const match = tag.match(
+        /^(?:lying|sitting|seated|kneeling|standing|reclining|squatting)\s+(on|in|at|beside|by|under|over)\s+(.+)$/i
+    );
+
+    return match
+        ? `${match[1].toLowerCase()} ${match[2]}`
+        : "";
+}
+
+function removeConflictingPostures(tags) {
+    // The LLM emits tags in arbitrary order, so a conflicting
+    // detail can precede the primary posture it contradicts.
+    const selectedPosture =
+        tags.map(postureKind).find(Boolean) || "";
+
+    const detailPattern =
+        POSTURE_DETAILS[selectedPosture];
+
+    return tags.flatMap(tag => {
+        const kind = postureKind(tag);
+
+        if (!kind) {
+            return detailPattern?.test(tag)
+                ? []
+                : [tag];
+        }
+
+        if (kind === selectedPosture) {
+            return [tag];
+        }
+
+        const location = locationFromRejectedPosture(tag);
+        return location ? [location] : [];
+    });
+}
+
 function escapeParentheses(tag) {
     return tag
         .replace(/(^|[^\\])\(/g, "$1\\(")
         .replace(/(^|[^\\])\)/g, "$1\\)");
+}
+
+function normalizeVisualTag(tag) {
+    const ageMatch = tag.match(/^(\d{1,3}) years? old$/);
+
+    if (ageMatch && Number(ageMatch[1]) >= 18) {
+        return ["adult woman"];
+    }
+
+    if (
+        /^looking at (?:the )?(?:user|viewer)[’']s shoes$/.test(tag)
+    ) {
+        return [
+            "front view",
+            "body facing viewer",
+            "looking down"
+        ];
+    }
+
+    if (tag === "head tilted down") {
+        return ["head down"];
+    }
+
+    return [tag];
 }
 
 function normalizeTags(
@@ -41,6 +121,7 @@ function normalizeTags(
                 .replace(/\s+/g, " ")
                 .toLowerCase()
             )
+            .flatMap(normalizeVisualTag)
             .filter(tag =>
                 tag &&
                 !tag.includes("http://") &&
@@ -109,7 +190,7 @@ export function formatImagePrompt(
                     !supplied.includes(tag)
                 );
 
-        positive = normalizeTags([
+        positive = removeConflictingPostures(normalizeTags([
             preset.prefix,
             ...(preset.scoreTags || []),
             ...(preset.qualityTags || []),
@@ -117,7 +198,7 @@ export function formatImagePrompt(
             ...content,
             ...(preset.requiredTags || []),
             preset.suffix
-        ].join(","), tagOptions)
+        ].join(","), tagOptions))
             .join(", ");
     }
 
