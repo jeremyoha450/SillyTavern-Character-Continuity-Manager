@@ -113,6 +113,67 @@ for (const target of [
     });
 }
 
+test("completely nude strips echoed no-garment tags", () => {
+    const result = formatImagePrompt(
+        {
+            positive:
+                "completely nude, 1girl, solo, no shirt, no bra, no panties, barefoot, standing"
+        },
+        tagPreset.id,
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "completely nude, 1girl, solo, barefoot, standing"
+    );
+});
+
+test("topless strips upper no-garment tags but keeps lower ones", () => {
+    const result = formatImagePrompt(
+        {
+            positive:
+                "topless, 1girl, no shirt, no bra, no panties, blue skirt"
+        },
+        tagPreset.id,
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "topless, 1girl, no panties, blue skirt"
+    );
+});
+
+test("no-garment tags survive when no nudity tag is present", () => {
+    const result = formatImagePrompt(
+        { positive: "1girl, white shirt, blue skirt, no panties" },
+        tagPreset.id,
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "1girl, white shirt, blue skirt, no panties"
+    );
+});
+
+test("the full nude trace formats without contradictions", () => {
+    const llmOutput =
+        "1girl, solo, petite, 23 years old, straight long black hair, brown eyes, white skin, small breasts, small butt, no shirt, no bra, no panties, barefoot, standing, body facing viewer, on the rug, left hand by side, right hand by side, head tilted down, looking at user's shoes, biting lip, embarrassed, flushed, indoors, detailed background";
+
+    const result = formatImagePrompt(
+        { positive: `completely nude, ${llmOutput}` },
+        tagPreset.id,
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "completely nude, 1girl, solo, petite, adult woman, straight long black hair, brown eyes, white skin, small breasts, small butt, barefoot, standing, body facing viewer, on the rug, left hand by side, right hand by side, head down, front view, looking down, biting lip, embarrassed, flushed, indoors, detailed background"
+    );
+});
+
 test("tag formatting reinforces an explicitly adult age", () => {
     const result = formatImagePrompt(
         { positive: "1girl, petite, 23 years old" },

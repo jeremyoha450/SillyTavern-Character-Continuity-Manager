@@ -20,6 +20,53 @@ const POSTURE_DETAILS = {
     squatting: /\bstanding upright\b|\bsitting cross-legged\b|\blying on\b/i
 };
 
+const NUDE_ALL_PATTERN = /^(?:completely nude|nude|naked|undressed)$/;
+const NUDE_TOP_PATTERN = /^topless$/;
+const NUDE_BOTTOM_PATTERN = /^bottomless$/;
+const UNDERWEAR_ONLY_PATTERN = /^underwear only$/;
+
+const NO_UPPER_GARMENT_PATTERN =
+    /^no (?:shirt|top|t-shirt|tank top|crop top|blouse|sweater|jumper|jacket|hoodie|coat|cardigan|bra|singlet|camisole)$/;
+const NO_LOWER_GARMENT_PATTERN =
+    /^no (?:shorts?|pants?|jeans?|trousers|skirt|dress|leggings?|panties|underwear|boxers?|briefs?)$/;
+const NO_OUTER_GARMENT_PATTERN =
+    /^no (?:shirt|top|t-shirt|tank top|crop top|blouse|sweater|jumper|jacket|hoodie|coat|cardigan|shorts?|pants?|jeans?|trousers|skirt|dress|leggings?)$/;
+
+// Small models echo the state's "no <garment>" values as
+// literal tags alongside the nudity tag; on Danbooru those
+// negation tags mean "clothed without that item" and
+// contradict the nudity tag, so drop the ones it covers.
+function removeRedundantRemovalTags(tags) {
+    const strips = [];
+
+    if (tags.some(tag => NUDE_ALL_PATTERN.test(tag))) {
+        strips.push(
+            NO_UPPER_GARMENT_PATTERN,
+            NO_LOWER_GARMENT_PATTERN
+        );
+    } else {
+        if (tags.some(tag => NUDE_TOP_PATTERN.test(tag))) {
+            strips.push(NO_UPPER_GARMENT_PATTERN);
+        }
+
+        if (tags.some(tag => NUDE_BOTTOM_PATTERN.test(tag))) {
+            strips.push(NO_LOWER_GARMENT_PATTERN);
+        }
+
+        if (tags.some(tag => UNDERWEAR_ONLY_PATTERN.test(tag))) {
+            strips.push(NO_OUTER_GARMENT_PATTERN);
+        }
+    }
+
+    if (!strips.length) {
+        return tags;
+    }
+
+    return tags.filter(tag =>
+        !strips.some(pattern => pattern.test(tag))
+    );
+}
+
 function postureKind(tag) {
     const match = tag.match(PRIMARY_POSTURE_PATTERN);
     return match?.[1]?.toLowerCase() === "seated"
@@ -190,7 +237,7 @@ export function formatImagePrompt(
                     !supplied.includes(tag)
                 );
 
-        positive = removeConflictingPostures(normalizeTags([
+        positive = removeConflictingPostures(removeRedundantRemovalTags(normalizeTags([
             preset.prefix,
             ...(preset.scoreTags || []),
             ...(preset.qualityTags || []),
@@ -198,7 +245,7 @@ export function formatImagePrompt(
             ...content,
             ...(preset.requiredTags || []),
             preset.suffix
-        ].join(","), tagOptions))
+        ].join(","), tagOptions)))
             .join(", ");
     }
 
