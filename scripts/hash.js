@@ -31,7 +31,6 @@ function simpleHash(text) {
         (h1 >>> 0).toString(16).padStart(8, "0")
     );
 }
-
 export async function generateHash(
     text
 ) {
@@ -59,18 +58,4 @@ export async function generateHash(
              .padStart(2, "0")
         )
         .join("");
-}
-
-export async function generateCharacterHashes(
-    card
-) {
-    return {
-        full: await generateHash(
-            JSON.stringify(card)
-        ),
-
-        description: await generateHash(
-            card.description || ""
-        )
-    };
 }

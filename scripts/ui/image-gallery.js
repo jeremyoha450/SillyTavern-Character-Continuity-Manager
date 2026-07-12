@@ -174,7 +174,8 @@ async function copyRecordPrompt(record) {
 function showImageDetails(
     characterId,
     record,
-    actions
+    actions,
+    groupId = ""
 ) {
     document
         .getElementById(
@@ -293,8 +294,10 @@ function showImageDetails(
             characterId,
             record,
             () => actions.renderCharacterDashboard(
-                characterId
-            )
+                characterId,
+                groupId
+            ),
+            groupId
         );
     });
 
@@ -306,7 +309,8 @@ function showImageDetails(
         });
         close();
         actions.renderCharacterDashboard(
-            characterId
+            characterId,
+            groupId
         );
     });
 
@@ -331,18 +335,21 @@ function showImageDetails(
 
         removeImageRecord(
             characterId,
-            record.id
+            record.id,
+            groupId
         );
         close();
         actions.renderCharacterDashboard(
-            characterId
+            characterId,
+            groupId
         );
     });
 }
 
 export function bindImageWorkspaceEvents(
     characterId,
-    actions
+    actions,
+    groupId = ""
 ) {
     const workspace =
         document.querySelector(
@@ -374,14 +381,16 @@ export function bindImageWorkspaceEvents(
                     getImageRecord(
                         characterId,
                         imageButton.dataset
-                            .ccmImageRecord
+                            .ccmImageRecord,
+                        groupId
                     );
 
                 if (record) {
                     showImageDetails(
                         characterId,
                         record,
-                        actions
+                        actions,
+                        groupId
                     );
                 }
                 return;
@@ -397,7 +406,8 @@ export function bindImageWorkspaceEvents(
                     getImageRecord(
                         characterId,
                         copyButton.dataset
-                            .ccmCopyRecord
+                            .ccmCopyRecord,
+                        groupId
                     );
 
                 if (record) {
@@ -418,7 +428,8 @@ export function bindImageWorkspaceEvents(
                     getImageRecord(
                         characterId,
                         reuseButton.dataset
-                            .ccmReuseRecord
+                            .ccmReuseRecord,
+                        groupId
                     );
 
                 if (record) {
@@ -427,9 +438,11 @@ export function bindImageWorkspaceEvents(
                         record,
                         () => actions
                             .renderCharacterDashboard(
-                                characterId
-                            )
-                        );
+                                characterId,
+                                groupId
+                            ),
+                        groupId
+                    );
                 }
                 return;
             }
@@ -452,11 +465,13 @@ export function bindImageWorkspaceEvents(
 
                 removeImageRecord(
                     characterId,
-                    recordId
+                    recordId,
+                    groupId
                 );
 
                 actions.renderCharacterDashboard(
-                    characterId
+                    characterId,
+                    groupId
                 );
             }
         }

@@ -1,102 +1,235 @@
 {
-"version": 1,
-
-"settings": {
-"extractionMode": "current_model",
-"updateFrequency": 3,
-"promptInjectionEnabled": true,
-"trackUserState": false
-},
-
-"characters": {
-"char_001": {
-"id": "char_001",
-
-```
-  "name": "Sarah",
-
-  "status": "active",
-
-  "hashes": {
-    "full": "",
-    "description": ""
-  },
-
-  "linkedCards": [],
-
-  "createdAt": "",
-  "updatedAt": "",
-
-  "appearance": {
-    "gender": "",
-    "age": "",
-    "height": "",
-    "species": "",
-
-    "hair": {
-      "color": "",
-      "style": ""
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/jeremyoha450/SillyTavern-Character-Continuity-Manager/schema.json",
+  "title": "Character Continuity Manager Database",
+  "type": "object",
+  "required": ["version", "characters"],
+  "properties": {
+    "version": { "type": "integer", "const": 5 },
+    "characters": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/character" }
     },
-
-    "eyes": {
-      "color": ""
+    "groups": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/groupContext" }
     },
-
-    "build": ""
+    "usage": { "$ref": "#/$defs/usage" }
   },
-
-  "clothing": {
-    "upper": "",
-    "lower": "",
-    "footwear": "",
-
-    "underwear": {
-      "top": "",
-      "bottom": ""
+  "additionalProperties": true,
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": ["value", "confidence"],
+      "properties": {
+        "value": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 100 }
+      },
+      "additionalProperties": false
+    },
+    "facts": {
+      "type": "object",
+      "properties": {
+        "characterName": { "$ref": "#/$defs/field" },
+        "age": { "$ref": "#/$defs/field" },
+        "eyeColor": { "$ref": "#/$defs/field" },
+        "hairColor": { "$ref": "#/$defs/field" },
+        "hairStyle": { "$ref": "#/$defs/field" },
+        "hairLength": { "$ref": "#/$defs/field" },
+        "height": { "$ref": "#/$defs/field" },
+        "bodyType": { "$ref": "#/$defs/field" },
+        "personality": { "$ref": "#/$defs/field" },
+        "gender": { "$ref": "#/$defs/field" },
+        "species": { "$ref": "#/$defs/field" },
+        "skin": { "$ref": "#/$defs/field" },
+        "breastSize": { "$ref": "#/$defs/field" },
+        "buttSize": { "$ref": "#/$defs/field" },
+        "relationship": { "$ref": "#/$defs/field" },
+        "upper": { "$ref": "#/$defs/field" },
+        "outerwear": { "$ref": "#/$defs/field" },
+        "lower": { "$ref": "#/$defs/field" },
+        "footwear": { "$ref": "#/$defs/field" },
+        "underwearTop": { "$ref": "#/$defs/field" },
+        "underwearBottom": { "$ref": "#/$defs/field" },
+        "location": { "$ref": "#/$defs/field" },
+        "position": { "$ref": "#/$defs/field" },
+        "area": { "$ref": "#/$defs/field" },
+        "positionDetail": { "$ref": "#/$defs/field" },
+        "leftHand": { "$ref": "#/$defs/field" },
+        "rightHand": { "$ref": "#/$defs/field" },
+        "headPosition": { "$ref": "#/$defs/field" },
+        "eyeDirection": { "$ref": "#/$defs/field" },
+        "expression": { "$ref": "#/$defs/field" },
+        "mood": { "$ref": "#/$defs/field" },
+        "moodIntensity": { "$ref": "#/$defs/field" },
+        "accessories": { "$ref": "#/$defs/field" },
+        "penis": { "$ref": "#/$defs/field" },
+        "penisState": { "$ref": "#/$defs/field" },
+        "penisCondition": { "$ref": "#/$defs/field" },
+        "pussy": { "$ref": "#/$defs/field" },
+        "pussyState": { "$ref": "#/$defs/field" },
+        "pussyCondition": { "$ref": "#/$defs/field" },
+        "condition": { "$ref": "#/$defs/field" },
+        "injuries": { "$ref": "#/$defs/field" },
+        "notes": { "$ref": "#/$defs/field" }
+      },
+      "additionalProperties": { "$ref": "#/$defs/field" }
+    },
+    "automationSettings": {
+      "type": "object",
+      "properties": {
+        "autoState": { "type": "boolean" },
+        "autoStateFrequency": { "type": "integer", "minimum": 1 },
+        "autoStateMessageCount": { "type": "integer", "minimum": 1 },
+        "lastStateHash": { "type": "string" },
+        "autoKnowledge": { "type": "boolean" },
+        "autoKnowledgeFrequency": { "type": "integer", "minimum": 1 },
+        "autoKnowledgeMessageCount": { "type": "integer", "minimum": 1 },
+        "lastKnowledgeHash": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "knowledge": {
+      "type": "object",
+      "required": ["id", "text", "confidence", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "text": { "type": "string" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 100 },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "imageRecord": {
+      "type": "object",
+      "required": ["id", "status", "positive", "createdAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "status": { "enum": ["prompt", "generating", "generated", "failed"] },
+        "presetId": { "type": "string" },
+        "presetLabel": { "type": "string" },
+        "positive": { "type": "string" },
+        "negative": { "type": "string" },
+        "imageUrl": { "type": "string" },
+        "error": { "type": "string" },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" },
+        "generatedAt": { "type": ["number", "null"] }
+      },
+      "additionalProperties": true
+    },
+    "historyChange": {
+      "type": "object",
+      "required": ["field", "old", "new"],
+      "properties": {
+        "field": { "type": "string" },
+        "old": { "$ref": "#/$defs/field" },
+        "new": { "$ref": "#/$defs/field" }
+      },
+      "additionalProperties": true
+    },
+    "historyEntry": {
+      "type": "object",
+      "required": ["type", "timestamp", "changes"],
+      "properties": {
+        "type": { "type": "string" },
+        "timestamp": { "type": "number" },
+        "changes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/historyChange" }
+        }
+      },
+      "additionalProperties": true
+    },
+    "character": {
+      "type": "object",
+      "required": ["id", "name", "status", "facts", "locks", "settings", "inventory", "imageHistory", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "status": { "enum": ["active", "archived"] },
+        "facts": { "$ref": "#/$defs/facts" },
+        "locks": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "overrides": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "settings": { "$ref": "#/$defs/automationSettings" },
+        "inventory": { "type": "array", "items": { "type": "string" } },
+        "knowledge": { "type": "array", "items": { "$ref": "#/$defs/knowledge" } },
+        "history": { "type": "array", "items": { "$ref": "#/$defs/historyEntry" } },
+        "image": { "type": "string" },
+        "avatar": { "type": "string" },
+        "imageHistory": { "type": "array", "items": { "$ref": "#/$defs/imageRecord" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "groupMember": {
+      "type": "object",
+      "required": ["characterId", "facts", "locks", "settings", "inventory", "knowledge", "history", "imageHistory"],
+      "properties": {
+        "characterId": { "type": "string" },
+        "facts": { "$ref": "#/$defs/facts" },
+        "locks": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "overrides": { "type": "object", "additionalProperties": { "type": "boolean" } },
+        "settings": { "$ref": "#/$defs/automationSettings" },
+        "inventory": { "type": "array", "items": { "type": "string" } },
+        "knowledge": { "type": "array", "items": { "$ref": "#/$defs/knowledge" } },
+        "history": { "type": "array", "items": { "$ref": "#/$defs/historyEntry" } },
+        "imageHistory": { "type": "array", "items": { "$ref": "#/$defs/imageRecord" } },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "groupContext": {
+      "type": "object",
+      "required": ["id", "name", "members", "memberOrder", "scene", "createdAt", "updatedAt"],
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "members": {
+          "type": "object",
+          "additionalProperties": { "$ref": "#/$defs/groupMember" }
+        },
+        "memberOrder": { "type": "array", "items": { "type": "string" } },
+        "scene": {
+          "type": "object",
+          "properties": {
+            "location": { "type": "string" },
+            "area": { "type": "string" },
+            "notes": { "type": "string" }
+          },
+          "additionalProperties": true
+        },
+        "createdAt": { "type": "number" },
+        "updatedAt": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "totals": {
+      "type": "object",
+      "properties": {
+        "requests": { "type": "number" },
+        "reportedRequests": { "type": "number" },
+        "inputTokens": { "type": "number" },
+        "outputTokens": { "type": "number" },
+        "totalTokens": { "type": "number" }
+      },
+      "additionalProperties": true
+    },
+    "usage": {
+      "type": "object",
+      "properties": {
+        "version": { "type": "integer" },
+        "totals": { "$ref": "#/$defs/totals" },
+        "byCharacter": { "type": "object" },
+        "byTask": { "type": "object" },
+        "byProvider": { "type": "object" },
+        "byModel": { "type": "object" },
+        "recent": { "type": "array" }
+      },
+      "additionalProperties": true
     }
-  },
-
-  "location": {
-    "place": "",
-    "area": ""
-  },
-
-  "position": {
-    "posture": "",
-    "detail": ""
-  },
-
-  "mood": {
-    "primary": ""
-  },
-
-  "statusInfo": {
-    "injuries": "",
-    "condition": "",
-    "notes": ""
-  },
-
-  "accessories": [],
-
-  "relationships": {
-    "user": {
-      "status": "",
-      "notes": ""
-    }
-  },
-
-  "locks": {
-    "appearance.gender": false,
-    "appearance.age": false,
-    "appearance.height": false,
-    "appearance.species": false,
-    "appearance.hair.color": false,
-    "appearance.eyes.color": false
-  },
-
-  "history": []
-}
-```
-
-}
+  }
 }

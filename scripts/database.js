@@ -12,18 +12,6 @@ const database =
         characters: {}
     };
 
-export function findCharacterByHash(
-    hash
-) {
-    return Object.values(
-        database.characters
-    ).find(
-        x =>
-            x.hashes?.full === hash ||
-            x.hashes?.description === hash
-    );
-}
-
 export function findCharacterByName(
     name
 ) {
@@ -34,6 +22,27 @@ export function findCharacterByName(
             x.name?.toLowerCase() ===
             name?.toLowerCase()
     );
+}
+
+export function findCharacterByAvatar(avatar) {
+    if (!avatar) return undefined;
+
+    return Object.values(database.characters)
+        .find(character => character.avatar === avatar);
+}
+
+export function findCharacterForCard(card) {
+    const byAvatar =
+        findCharacterByAvatar(card?.avatar);
+
+    if (byAvatar) return byAvatar;
+
+    const byName =
+        findCharacterByName(card?.name);
+
+    return !byName?.avatar || byName.avatar === card?.avatar
+        ? byName
+        : undefined;
 }
 
 function generateId() {
@@ -66,86 +75,7 @@ export function createCharacter(
 
         status: "active",
 
-        hashes: {
-            full: "",
-            description: ""
-        },
-
-        appearance: {
-            gender: "",
-            age: "",
-            species: "",
-            height: "",
-
-            hair: {
-                color: "",
-                style: "",
-                length: ""
-            },
-
-            eyes: {
-                color: ""
-            },
-
-            skin: "",
-            bodyType: "",
-
-            breastSize: "",
-            buttSize: ""
-        },
-
-        anatomy: {
-            penis: "",
-            penisState: "",
-
-            pussy: "",
-            pussyState: ""
-        },
-
-        clothing: {
-            upper: "",
-            lower: "",
-            outerwear: "",
-
-            underwear: {
-                top: "",
-                bottom: ""
-            },
-
-            footwear: "Barefoot"
-        },
-
-        location: {
-            place: "",
-            area: ""
-        },
-
-        position: {
-            posture: "",
-            detail: ""
-        },
-
-        mood: {
-            primary: "",
-            intensity: ""
-        },
-
-        relationships: {
-            user: {
-                status: "",
-                notes: ""
-            }
-        },
-
-        accessories: [],
-
         inventory: [],
-
-        statusInfo: {
-            condition: "",
-            injuries: "",
-            notes: ""
-        },
 
         locks: {},
 
@@ -241,7 +171,22 @@ facts: {
         value: "",
         confidence: 0
     },
-	
+
+    usualUpper: {
+        value: "",
+        confidence: 0
+    },
+
+    usualLower: {
+        value: "",
+        confidence: 0
+    },
+
+    usualFootwear: {
+        value: "",
+        confidence: 0
+    },
+
     upper: {
         value: "",
         confidence: 0
@@ -271,7 +216,12 @@ facts: {
         value: "",
         confidence: 0
     },
-	
+
+    covering: {
+        value: "",
+        confidence: 0
+    },
+
     location: {
         value: "",
         confidence: 0
@@ -288,6 +238,11 @@ facts: {
     },
 	
     positionDetail: {
+        value: "",
+        confidence: 0
+    },
+
+    legs: {
         value: "",
         confidence: 0
     },
@@ -377,9 +332,6 @@ facts: {
         confidence: 0
     }
 },
-state: {
-    status: "",
-},
         createdAt: Date.now(),
 
         updatedAt: Date.now()
@@ -428,6 +380,148 @@ export function updateCharacter(
     return true;
 }
 
+export function getGroupContext(groupId) {
+    return database.groups?.[groupId];
+}
+
+export function updateGroupContext(
+    groupId,
+    updates
+) {
+    const group =
+        getGroupContext(groupId);
+
+    if (!group) return false;
+
+    database.groups[groupId] = {
+        ...group,
+        ...structuredClone(updates),
+        id: group.id,
+        updatedAt: Date.now()
+    };
+
+    saveDatabase();
+    return true;
+}
+
+function createGroupMember(character) {
+    return {
+        characterId: character.id,
+        facts: structuredClone(character.facts || {}),
+        locks: structuredClone(character.locks || {}),
+        overrides: structuredClone(character.overrides || {}),
+        inventory: structuredClone(character.inventory || []),
+        knowledge: structuredClone(character.knowledge || []),
+        history: [],
+        settings: structuredClone(character.settings || {}),
+        imageHistory: [],
+        createdAt: Date.now(),
+        updatedAt: Date.now()
+    };
+}
+
+export function syncGroupContext(
+    group,
+    characters
+) {
+    if (!group?.id) return null;
+
+    database.groups = database.groups || {};
+
+    const existing =
+        database.groups[group.id] || {
+            id: String(group.id),
+            name: group.name || "Group",
+            members: {},
+            memberOrder: [],
+            scene: {
+                location: "",
+                area: "",
+                notes: ""
+            },
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+        };
+
+    existing.name = group.name || existing.name;
+    existing.memberOrder = characters.map(
+        character => character.id
+    );
+
+    for (const character of characters) {
+        existing.members[character.id] =
+            existing.members[character.id] ||
+            createGroupMember(character);
+    }
+
+    existing.updatedAt = Date.now();
+    database.groups[group.id] = existing;
+    saveDatabase();
+
+    return existing;
+}
+
+export function getScopedCharacter(
+    characterId,
+    groupId = ""
+) {
+    const character =
+        getCharacter(characterId);
+
+    if (!character || !groupId) {
+        return character;
+    }
+
+    const member =
+        getGroupContext(groupId)
+            ?.members?.[characterId];
+
+    if (!member) return null;
+
+    return {
+        ...character,
+        ...structuredClone(member),
+        id: character.id,
+        name: character.name,
+        avatar: character.avatar,
+        image: character.image,
+        status: character.status,
+        groupId
+    };
+}
+
+export function updateScopedCharacter(
+    characterId,
+    updates,
+    groupId = ""
+) {
+    if (!groupId) {
+        return updateCharacter(
+            characterId,
+            updates
+        );
+    }
+
+    const group =
+        getGroupContext(groupId);
+
+    const member =
+        group?.members?.[characterId];
+
+    if (!member) return false;
+
+    group.members[characterId] = {
+        ...member,
+        ...structuredClone(updates),
+        characterId,
+        updatedAt: Date.now()
+    };
+
+    group.updatedAt = Date.now();
+    saveDatabase();
+    return true;
+}
+
 export function archiveCharacter(id) {
     return updateCharacter(id, {
         status: "archived"
@@ -443,6 +537,13 @@ export function restoreCharacter(id) {
 export function deleteCharacter(id) {
     removeCharacterUsage(id);
     delete database.characters[id];
+
+    for (const group of Object.values(database.groups || {})) {
+        delete group.members?.[id];
+        group.memberOrder =
+            (group.memberOrder || [])
+                .filter(characterId => characterId !== id);
+    }
 
     document.dispatchEvent(
         new CustomEvent(

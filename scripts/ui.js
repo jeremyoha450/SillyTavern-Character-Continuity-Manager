@@ -27,6 +27,10 @@ import {
 } from "./ui/dashboard.js";
 
 import {
+    renderGroupDashboard as renderGroup
+} from "./ui/group-dashboard.js";
+
+import {
     createCharacterImagePrompt
 } from "./ui/image-prompt.js";
 
@@ -46,6 +50,14 @@ import {
     escapeHtml
 } from "./ui/escape.js";
 
+import {
+    getContextCharacters
+} from "./group-context.js";
+
+import {
+    openCharacterCreator
+} from "./ui/character-creator.js";
+
 function formatCharacterUsage(characterId) {
 
     const totals =
@@ -57,6 +69,7 @@ function formatCharacterUsage(characterId) {
 
 
 export function initUI() {
+    loadExtensionVersion();
     createLauncher();
     setupLauncherEvent();
 
@@ -67,16 +80,39 @@ export function initUI() {
 }
 
 let activeDashboardPopup = null;
+let extensionVersion = "";
 const dashboardViewport =
     window.matchMedia("(max-width: 1400px)");
 const launcherPositionKey =
     "ccm-launcher-position-v1";
+
+async function loadExtensionVersion() {
+    try {
+        const response = await fetch(
+            new URL("../manifest.json", import.meta.url)
+        );
+        if (!response.ok) return;
+
+        const manifest = await response.json();
+        extensionVersion = String(manifest.version || "").trim();
+
+        const label = document.getElementById("ccm-version");
+        if (label) label.textContent = extensionVersion
+            ? `v${extensionVersion}`
+            : "";
+    } catch (error) {
+        console.warn("[CCM] Could not load extension version", error);
+    }
+}
 
 function createLauncher() {
     const launcher = document.createElement("div");
 
     launcher.id = "ccm-launcher";
     launcher.innerHTML = "🧠";
+    launcher.setAttribute("role", "button");
+    launcher.setAttribute("tabindex", "0");
+    launcher.setAttribute("aria-label", "Open Character Continuity Manager");
 
     document.body.appendChild(launcher);
 
@@ -90,13 +126,20 @@ function createPanel() {
 
     panel.innerHTML = `
     <div id="ccm-header">
-        <span>Character Continuity Manager</span>
+        <span class="ccm-header-title">
+            Character Continuity Manager
+            <small id="ccm-version">${extensionVersion ? `v${escapeHtml(extensionVersion)}` : ""}</small>
+        </span>
 
         <button id="ccm-close">✕</button>
     </div>
 
     <div id="ccm-body">
 		<div class="ccm-main-actions">
+			<button id="ccm-create-character">
+				＋ Create Character(s)
+			</button>
+
 			<button id="ccm-open-settings">
 				⚙ Settings
 			</button>
@@ -139,6 +182,18 @@ export function renderCharacterList() {
         ?.removeAttribute("hidden");
 
     container.innerHTML = "";
+    delete container.dataset.ccmCharacterId;
+
+    const context =
+        SillyTavern.getContext();
+
+    const currentGroupAvatars =
+        new Set(
+            context.groupId
+                ? getContextCharacters(context)
+                    .map(character => character.avatar)
+                : []
+        );
 
 
     const activeHeader =
@@ -230,6 +285,9 @@ export function renderCharacterList() {
 
 			<div>
 				<strong>${escapeHtml(char.name)}</strong>
+				${currentGroupAvatars.has(char.avatar)
+                    ? `<span class="ccm-group-member-badge">Current group</span>`
+                    : ""}
 				<br>
 				<small>
 					${escapeHtml(char.facts?.age?.value || "?")}
@@ -316,6 +374,9 @@ export function renderCharacterList() {
 
 				<div>
 					<strong>${escapeHtml(char.name)}</strong>
+					${currentGroupAvatars.has(char.avatar)
+                        ? `<span class="ccm-group-member-badge">Current group</span>`
+                        : ""}
 					<br>
 					<small>Archived</small>
 					<br>
@@ -484,6 +545,13 @@ function openDashboardPopup() {
 
 function renderInitialDashboard(ctx) {
 
+    if (ctx?.groupId) {
+        renderGroupDashboard(
+            ctx.groupId
+        );
+        return;
+    }
+
     const stCharacter =
         ctx?.characters?.[
             ctx.characterId
@@ -553,6 +621,7 @@ function makeDraggable(
     let originLeft = 0;
     let originTop = 0;
     let dragged = false;
+    let lastPointerTapAt = 0;
 
     handle.addEventListener(
         "pointerdown",
@@ -658,10 +727,29 @@ function makeDraggable(
             if (dragged && onDragEnd) {
                 onDragEnd(element);
             } else if (!dragged && onTap) {
+                lastPointerTapAt = Date.now();
                 onTap();
             }
         }
     );
+
+    if (onTap) {
+        handle.addEventListener("click", event => {
+            if (
+                Date.now() - lastPointerTapAt < 500 ||
+                event.target.closest("button, input, select, textarea")
+            ) {
+                return;
+            }
+            onTap();
+        });
+
+        handle.addEventListener("keydown", event => {
+            if (!["Enter", " "].includes(event.key)) return;
+            event.preventDefault();
+            onTap();
+        });
+    }
 }
 
 function saveLauncherPosition(launcher) {
@@ -831,6 +919,15 @@ function setupPanelEvents() {
 		);
 
     document
+        .getElementById("ccm-create-character")
+        .addEventListener(
+            "click",
+            () => openCharacterCreator(
+                renderCharacterList
+            )
+        );
+
+    document
         .getElementById("ccm-open-settings")
         .addEventListener(
             "click",
@@ -847,13 +944,15 @@ function setupPanelEvents() {
 
 
 export function renderCharacterDashboard(
-    id
+    id,
+    groupId = ""
 ) {
 
     renderDashboard(
         id,
         {
             renderCharacterDashboard,
+            renderGroupDashboard,
             renderCharacterList,
             openEditor,
             reExtractCharacter,
@@ -863,6 +962,18 @@ export function renderCharacterDashboard(
 			openUsageStats,
 			changeCharacterImage,
 			removeCharacterImage
+		},
+        groupId
+    );
+}
+
+export function renderGroupDashboard(groupId) {
+    renderGroup(
+        groupId,
+        {
+            renderCharacterDashboard,
+            renderGroupDashboard,
+            renderCharacterList
         }
     );
 }

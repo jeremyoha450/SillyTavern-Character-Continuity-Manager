@@ -80,14 +80,8 @@ registerDriver(
     geminiDriver
 );
 
-console.log(
-    "=== CCM STARTING ==="
-);
 
 jQuery(() => {
-    console.log(
-        "Character Continuity Manager Loaded"
-    );
 
     // Async; getHeightConfig() serves built-in defaults
     // until the file arrives.

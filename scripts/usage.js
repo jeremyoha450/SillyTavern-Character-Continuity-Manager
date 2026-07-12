@@ -5,6 +5,8 @@ import {
     saveDatabase
 } from "./database.js";
 
+import { debugLog } from "./debug-logger.js";
+
 function emptyTotals() {
     return {
         requests: 0,
@@ -217,6 +219,16 @@ export function recordUsage({
         sessionUsage,
         entry
     );
+
+    debugLog("stats", "usage.recorded", {
+        task: task.id,
+        provider: provider.id,
+        reported,
+        inputTokens: entry.inputTokens,
+        outputTokens: entry.outputTokens,
+        totalTokens: entry.totalTokens,
+        status: "success"
+    });
 
     saveDatabase();
 }

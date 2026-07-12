@@ -6,10 +6,13 @@ import {
 } from "../../../../../script.js";
 
 import {
-    findCharacterByName,
+    findCharacterForCard,
     getCharacter,
+    getScopedCharacter,
     createCharacter,
     addCharacter,
+    syncGroupContext,
+    updateScopedCharacter,
     updateCharacter
 } from "./database.js";
 
@@ -37,8 +40,10 @@ import {
 import {
     renderCharacterList,
     renderCharacterDashboard,
+    renderGroupDashboard,
     openDashboard
 } from "./ui.js";
+import { getSafeErrorMessage } from "./provider-error.js";
 
 import {
     showCCMStatus,
@@ -62,70 +67,39 @@ import {
 } from "./extraction/post-process.js";
 
 import {
-    isUnderage,
-    UNDERAGE_MESSAGE
-} from "./extraction/age-guard.js";
-
-import {
     getHeightConfig
 } from "./config/height-defaults.js";
 
+import {
+    formatChatMessages,
+    getContextCharacters,
+    getFirstCharacterMessage,
+    getRelevantContextCharacters,
+    targetCharacterConversation
+} from "./group-context.js";
+import { automationScopeKey } from "./automation-scope.js";
 
-let lastAutoStateText = "";
+
 let autoStateCounter = {};
 
-let lastAutoKnowledgeText = "";
 let autoKnowledgeCounter = {};
 
 const autoUpdateInFlight = new Set();
+let contextSyncInFlight = false;
+let contextSyncPending = false;
 
 export function initializeContinuityManager() {
 
-    console.log(
-        "[CCM] Continuity Manager Ready"
-    );
 
     eventSource.on(
         event_types.CHAT_LOADED,
 		
-        onChatLoaded
+        requestContextSync
     );
 	
 	eventSource.on(
         event_types.CHAT_CHANGED,
-        () => {
-
-            const ctx =
-                SillyTavern.getContext();
-
-            const character =
-                ctx?.characters?.[
-                    ctx.characterId
-                ];
-
-            const panel =
-                document.getElementById(
-                    "ccm-panel"
-                );
-
-            if (!character) {
-
-                if (
-                    panel &&
-                    getComputedStyle(panel).display !== "none"
-                ) {
-                    renderCharacterList();
-                }
-
-                return;
-
-            }
-
-			console.log(
-				"[CCM] Avatar",
-				character.avatar
-			);
-        }
+        requestContextSync
     );
 	
 	if (event_types.GENERATION_ENDED) {
@@ -150,240 +124,321 @@ export function initializeContinuityManager() {
 	
 }
 
+async function requestContextSync() {
+    contextSyncPending = true;
+
+    if (contextSyncInFlight) return;
+
+    contextSyncInFlight = true;
+
+    try {
+        while (contextSyncPending) {
+            contextSyncPending = false;
+            await onChatLoaded();
+        }
+    } finally {
+        contextSyncInFlight = false;
+    }
+}
+
 async function onChatLoaded() {
 
-    const ctx =
+    const context =
         SillyTavern.getContext();
 
-    const character =
-        ctx?.characters?.[
-            ctx.characterId
-        ];
+    const cards =
+        getContextCharacters(context);
+
+    if (!cards.length) {
+
+        const panel =
+            document.getElementById(
+                "ccm-panel"
+            );
+
+        if (
+            panel &&
+            getComputedStyle(panel).display !== "none"
+        ) {
+            renderCharacterList();
+        }
+
+        return;
+    }
+
+    const records = [];
+    let createdCount = 0;
+
+    for (const card of cards) {
+
+        let record =
+            findCharacterForCard(card);
+
+        if (record) {
+
+            const updates = {};
+
+            if (record.avatar !== card.avatar) {
+                updates.avatar = card.avatar || "";
+            }
+
+            if (record.name !== card.name) {
+                updates.name = card.name;
+            }
+
+            if (Object.keys(updates).length) {
+                updateCharacter(
+                    record.id,
+                    updates
+                );
+                record =
+                    getCharacter(record.id);
+            }
+
+        } else {
+
+            record =
+                await createCharacterFromCard(
+                    context,
+                    card
+                );
+
+            if (record) {
+                createdCount++;
+            }
+
+        }
+
+        if (record) {
+            records.push(record);
+        }
+    }
+
+    if (context.groupId) {
+
+        const groups = Array.isArray(context.groups)
+            ? context.groups
+            : Object.values(context.groups || {});
+
+        const group =
+            groups.find(item =>
+                String(item.id) === String(context.groupId)
+            ) || {
+                id: context.groupId,
+                name: "Group"
+            };
+
+        syncGroupContext(
+            group,
+            records
+        );
+
+        if (createdCount) {
+            showCCMSuccess(
+                createdCount === 1
+                    ? "Group character added to CCM"
+                    : `${createdCount} group characters added to CCM`
+            );
+            openDashboard();
+        }
+
+        renderGroupDashboard(
+            context.groupId
+        );
+        return;
+    }
+
+    const record = records[0];
+
+    if (!record) return;
+
+    if (createdCount) {
+        showCCMSuccess(
+            "Character added to CCM"
+        );
+        openDashboard();
+        renderCharacterDashboard(
+            record.id
+        );
+        return;
+    }
+
+    const panel =
+        document.getElementById(
+            "ccm-panel"
+        );
+
+    if (
+        panel &&
+        getComputedStyle(panel).display !== "none"
+    ) {
+        renderCharacterDashboard(
+            record.id
+        );
+    } else {
+        renderCharacterList();
+    }
+}
+
+async function createCharacterFromCard(
+    context,
+    card
+) {
 
     const characterName =
-        character?.name;
+        card?.name;
 
-    console.log(
-        "[CCM] Character Name",
-        characterName
-    );
+    if (!characterName) return null;
 
-	if (!characterName) {
+    showCCMStatus(`
+        <div style="font-size:52px;">
+            ⏳
+        </div>
 
-		const panel =
-			document.getElementById(
-				"ccm-panel"
-			);
+        <br>
 
-		if (
-			panel &&
-			getComputedStyle(panel).display !== "none"
-		) {
+        Adding ${escapeStatusText(characterName)} to CCM...
 
-			renderCharacterList();
+        <br><br>
 
-		}
+        Please wait...
+    `);
 
-		return;
-	}
-
-    const existing =
-		findCharacterByName(
-			characterName
-		);
-
-	if (existing) {
-
-		if (
-			existing.avatar !== character.avatar
-		) {
-
-			updateCharacter(
-				existing.id,
-				{
-					avatar:
-						character.avatar || ""
-				}
-			);
-
-		}
-
-		const panel =
-			document.getElementById(
-				"ccm-panel"
-			);
-
-		if (
-			panel &&
-			getComputedStyle(panel).display !== "none"
-		) {
-
-			renderCharacterDashboard(
-				existing.id
-			);
-
-		} else {
-
-			renderCharacterList();
-
-		}
-
-		return;
-
-	}
-
-    console.log(
-		"[CCM] Creating Character",
-		characterName
-	);
-
-	showCCMStatus(`
-		<div style="font-size:52px;">
-			⏳
-		</div>
-
-		<br>
-
-		Adding character to CCM...
-
-		<br><br>
-
-		Please wait...
-	`);
-
-	const knowledgeText =
-    [
-        character.data?.description,
-        character.data?.personality
+    const knowledgeText = [
+        card.data?.description,
+        card.data?.personality
     ]
         .filter(Boolean)
         .join("\n\n");
 
     const characterNote =
-        character.data
+        card.data
             ?.extensions
             ?.depth_prompt
             ?.prompt ||
-        character.data?.character_note ||
-        character.character_note ||
+        card.data?.character_note ||
+        card.character_note ||
         "";
 
     const firstChatMessage =
-        ctx.chat?.find(
-            message =>
-                !message.is_user &&
-                typeof message.mes === "string" &&
-                message.mes.trim()
-        )?.mes ||
-        character.data?.first_mes ||
-        character.first_mes ||
+        getFirstCharacterMessage(
+            context.chat,
+            card
+        ) ||
+        (
+            !context.groupId
+                ? context.chat?.find(
+                    message =>
+                        !message.is_user &&
+                        typeof message.mes === "string" &&
+                        message.mes.trim()
+                )?.mes
+                : ""
+        ) ||
+        card.data?.first_mes ||
+        card.first_mes ||
         "";
 
-    const initialStateText =
-        [
-            character.data?.description
-                ? `Character Description:\n${character.data.description}`
-                : "",
+    const initialStateText = [
+        card.data?.description
+            ? `Character Description:\n${card.data.description}`
+            : "",
 
-            characterNote
-                ? `Character Note:\n${characterNote}`
-                : "",
+        characterNote
+            ? `Character Note:\n${characterNote}`
+            : "",
 
-            character.data?.personality
-                ? `Personality Summary:\n${character.data.personality}`
-                : "",
+        card.data?.personality
+            ? `Personality Summary:\n${card.data.personality}`
+            : "",
 
-            firstChatMessage
-                ? `First Chat Message:\nAssistant:\n${firstChatMessage}`
-                : ""
-        ]
-            .filter(Boolean)
-            .join("\n\n");
+        firstChatMessage
+            ? `First Chat Message:\n${characterName}:\n${firstChatMessage}`
+            : ""
+    ]
+        .filter(Boolean)
+        .join("\n\n");
 
-	const newCharacter =
-		createCharacter(
-			characterName
-		);
+    const newCharacter =
+        createCharacter(characterName);
 
-	newCharacter.avatar =
-		character.avatar || "";
+    newCharacter.avatar =
+        card.avatar || "";
 
     let facts;
-	let knowledge = [];
+    let knowledge = [];
     let initialState = null;
 
-	try {
+    try {
 
-		facts =
-			postProcessFacts(
-				await execute(
-					"facts",
-					character.data?.description || "",
-					{
-						characterId:
-							newCharacter.id,
-						characterName
-					}
-				),
-				{
-					characterId:
-						newCharacter.id,
-					heightConfig:
-						getHeightConfig()
-				}
-			);
+        facts =
+            postProcessFacts(
+                await execute(
+                    "facts",
+                    card.data?.description || "",
+                    {
+                        characterId:
+                            newCharacter.id,
+                        characterName
+                    }
+                ),
+                {
+                    characterId:
+                        newCharacter.id,
+                    heightConfig:
+                        getHeightConfig()
+                }
+            );
 
-		knowledge =
-			await extractKnowledge(
-				knowledgeText,
-				{
-					characterId:
-						newCharacter.id,
-					characterName
-				}
-			);
+        knowledge =
+            await extractKnowledge(
+                knowledgeText,
+                {
+                    characterId:
+                        newCharacter.id,
+                    characterName
+                }
+            );
 
-        // Underage characters keep their facts and knowledge
-        // but never get state extraction (or, downstream,
-        // image prompts).
-        if (
-            initialStateText.trim() &&
-            !isUnderage(facts)
-        ) {
+        if (initialStateText.trim()) {
 
             initialState =
                 await extractState(
-                    `CREATION STATE SOURCES
+                    targetCharacterConversation(
+                        newCharacter,
+                        `CREATION STATE SOURCES
 
 Use the First Chat Message as the highest-priority source for current state when sources conflict.
 
-${initialStateText}`,
+${initialStateText}`
+                    ),
                     {
                         characterId:
                             newCharacter.id,
                         characterName
                     }
                 );
-
         }
 
-	} catch (error) {
+    } catch (error) {
 
-		clearUsage(
-			newCharacter.id
-		);
+        clearUsage(
+            newCharacter.id
+        );
 
-		console.error(
-			"[CCM] Failed to extract facts for new character",
-			error
-		);
+        console.error(
+            "[CCM] Failed to create character record",
+            error
+        );
 
-		showCCMError(
-			"Failed to add character to CCM."
-		);
+        showCCMError(
+            `Failed to add ${characterName} to CCM.`,
+            error,
+            "Initial character extraction"
+        );
 
-		return;
-	}
+        return null;
+    }
 
     const mergedFacts =
         mergeData(
@@ -421,122 +476,123 @@ ${initialStateText}`,
                 data: mergedFacts.data
             };
 
-    // The merge skips blank extraction fields, letting the
-    // creation template's non-empty confidence-0 defaults
-    // (species, hands) through untouched — enforce rule 5 on
-    // the merged result, not just the extraction output.
     newCharacter.facts =
-		enforceConsistency(
-			mergedInitialState.data
-		);
+        enforceConsistency(
+            mergedInitialState.data
+        );
 
-	newCharacter.knowledge =
-		knowledge.map(
-			item => ({
-				id:
-					"knowledge_" +
-					Date.now() +
-					"_" +
-					Math.random()
-						.toString(36)
-						.slice(2, 8),
+    newCharacter.knowledge =
+        knowledge.map(
+            item => ({
+                id:
+                    "knowledge_" +
+                    Date.now() +
+                    "_" +
+                    Math.random()
+                        .toString(36)
+                        .slice(2, 8),
 
-				text:
-					item.text,
+                text:
+                    item.text,
 
-				confidence:
-					item.confidence,
+                confidence:
+                    item.confidence,
 
-				createdAt:
-					Date.now(),
+                createdAt:
+                    Date.now(),
 
-				updatedAt:
-					Date.now()
-			})
-		);
+                updatedAt:
+                    Date.now()
+            })
+        );
 
-	addCharacter(
-		newCharacter
-	);
+    addCharacter(
+        newCharacter
+    );
 
-	showCCMSuccess(
-		"Character added to CCM"
-	);
+    return newCharacter;
+}
 
-	if (isUnderage(newCharacter.facts)) {
-		showCCMToast(
-			UNDERAGE_MESSAGE,
-			"error"
-		);
-	}
+function escapeStatusText(value) {
+    const element =
+        document.createElement("div");
 
-	// The panel only exists while the dashboard is open,
-	// so create it if needed before rendering into it.
-	openDashboard();
+    element.textContent =
+        String(value ?? "");
 
-	renderCharacterDashboard(
-		newCharacter.id
-	);
+    return element.innerHTML;
 }
 
 async function onAutoStateUpdate() {
 
-    const ctx =
+    const context =
         SillyTavern.getContext();
 
-    if (!ctx.chat || ctx.chat.length === 0) {
+    if (!context.chat?.length) {
         return;
     }
 
     const lastMessage =
-        ctx.chat[
-            ctx.chat.length - 1
+        context.chat[
+            context.chat.length - 1
         ];
 
-    if (lastMessage.is_user) {
-        return;
-    }
-
-    const stCharacter =
-        ctx?.characters?.[
-            ctx.characterId
-        ];
-
-    const characterName =
-        stCharacter?.name;
-
-    if (!characterName) {
-        return;
-    }
-
-    const ccmCharacter =
-        findCharacterByName(
-            characterName
-        );
-
-    if (!ccmCharacter) {
-        return;
-    }
-
-    // A previous auto update for this character is still
-    // awaiting its AI response; running a second one
-    // alongside it would race on the same character data.
     if (
-        autoUpdateInFlight.has(
-            ccmCharacter.id
-        )
+        lastMessage.is_user ||
+        lastMessage.is_system
     ) {
         return;
     }
 
+    const cards =
+        getRelevantContextCharacters(
+            context,
+            [lastMessage]
+        );
+
+    for (const card of cards) {
+
+        const baseCharacter =
+            findCharacterForCard(card);
+
+        if (!baseCharacter) continue;
+
+        const character =
+            getScopedCharacter(
+                baseCharacter.id,
+                context.groupId || ""
+            );
+
+        if (!character) continue;
+
+        await runAutoUpdateForCharacter(
+            context,
+            character,
+            card
+        );
+    }
+}
+
+async function runAutoUpdateForCharacter(
+    context,
+    character,
+    card
+) {
+    const groupId = context.groupId || "";
+    const scopeKey = automationScopeKey(character.id, groupId);
+
+    if (autoUpdateInFlight.has(scopeKey)) {
+        return;
+    }
+
     const settings =
-        ccmCharacter.settings || {};
+        character.settings || {};
 
     const autoStateEnabled =
-        !!settings.autoState;
+        Boolean(settings.autoState);
 
     const autoKnowledgeEnabled =
-        !!settings.autoKnowledge;
+        Boolean(settings.autoKnowledge);
 
     if (
         !autoStateEnabled &&
@@ -551,35 +607,23 @@ async function onAutoStateUpdate() {
     const knowledgeFrequency =
         settings.autoKnowledgeFrequency || 20;
 
-    if (autoStateEnabled) {
+    autoStateCounter[scopeKey] =
+        autoStateEnabled
+            ? (autoStateCounter[scopeKey] || 0) + 1
+            : 0;
 
-        autoStateCounter[ccmCharacter.id] =
-            (autoStateCounter[ccmCharacter.id] || 0) + 1;
-
-    } else {
-
-        autoStateCounter[ccmCharacter.id] = 0;
-
-    }
-
-    if (autoKnowledgeEnabled) {
-
-        autoKnowledgeCounter[ccmCharacter.id] =
-            (autoKnowledgeCounter[ccmCharacter.id] || 0) + 1;
-
-    } else {
-
-        autoKnowledgeCounter[ccmCharacter.id] = 0;
-
-    }
+    autoKnowledgeCounter[scopeKey] =
+        autoKnowledgeEnabled
+            ? (autoKnowledgeCounter[scopeKey] || 0) + 1
+            : 0;
 
     const shouldRunState =
         autoStateEnabled &&
-        autoStateCounter[ccmCharacter.id] >= stateFrequency;
+        autoStateCounter[scopeKey] >= stateFrequency;
 
     const shouldRunKnowledge =
         autoKnowledgeEnabled &&
-        autoKnowledgeCounter[ccmCharacter.id] >= knowledgeFrequency;
+        autoKnowledgeCounter[scopeKey] >= knowledgeFrequency;
 
     if (
         !shouldRunState &&
@@ -589,22 +633,21 @@ async function onAutoStateUpdate() {
     }
 
     if (shouldRunState) {
-        autoStateCounter[ccmCharacter.id] = 0;
+        autoStateCounter[scopeKey] = 0;
     }
 
     if (shouldRunKnowledge) {
-        autoKnowledgeCounter[ccmCharacter.id] = 0;
+        autoKnowledgeCounter[scopeKey] = 0;
     }
 
-    autoUpdateInFlight.add(
-        ccmCharacter.id
-    );
+    autoUpdateInFlight.add(scopeKey);
 
     try {
 
         await runAutoUpdates(
-            ctx,
-            ccmCharacter,
+            context,
+            character,
+            card,
             settings,
             shouldRunState,
             shouldRunKnowledge
@@ -612,17 +655,14 @@ async function onAutoStateUpdate() {
 
     } finally {
 
-        autoUpdateInFlight.delete(
-            ccmCharacter.id
-        );
-
+        autoUpdateInFlight.delete(scopeKey);
     }
-
 }
 
 async function runAutoUpdates(
-    ctx,
-    ccmCharacter,
+    context,
+    character,
+    card,
     settings,
     shouldRunState,
     shouldRunKnowledge
@@ -635,30 +675,28 @@ async function runAutoUpdates(
         settings.autoKnowledgeMessageCount || 30;
 
     const messages =
-        ctx.chat
-            .slice(-stateMessageCount)
-            .map(
-                x =>
-                    `${x.is_user ? "User" : "Assistant"}:\n${x.mes}`
+        targetCharacterConversation(
+            card,
+            formatChatMessages(
+                context.chat.slice(
+                    -stateMessageCount
+                )
             )
-            .join("\n\n");
+        );
 
     const knowledgeMessages =
-        ctx.chat
-            .slice(-knowledgeMessageCount)
-            .map(
-                x =>
-                    `${x.is_user ? "User" : "Assistant"}:\n${x.mes}`
+        targetCharacterConversation(
+            card,
+            formatChatMessages(
+                context.chat.slice(
+                    -knowledgeMessageCount
+                )
             )
-            .join("\n\n");
+        );
 
     const hashUpdates = {};
-
-    let settingsChanged =
-        false;
-
-    let shouldRefresh =
-        false;
+    let settingsChanged = false;
+    let shouldRefresh = false;
 
     if (shouldRunState) {
 
@@ -668,84 +706,48 @@ async function runAutoUpdates(
             );
 
         if (
-            settings.lastStateHash === stateHash
+            settings.lastStateHash !== stateHash
         ) {
-
-            console.log(
-                "[CCM] State window unchanged"
-            );
-
-        } else if (
-            messages !== lastAutoStateText
-        ) {
-
-            lastAutoStateText =
-                messages;
-
-            console.log(
-                "[CCM] Auto State Update"
-            );
 
             showCCMToast(
-                "Auto state update in progress..."
+                `Updating ${card.name}'s state...`
             );
 
             try {
 
                 const result =
                     await updateCharacterStateData(
-                        ccmCharacter.id,
-                        messages
+                        character.id,
+                        messages,
+                        context.groupId || ""
                     );
 
                 hashUpdates.lastStateHash =
                     stateHash;
 
-                settingsChanged =
-                    true;
+                settingsChanged = true;
+                shouldRefresh = true;
 
-                shouldRefresh =
-                    true;
-
-                if (result.blocked === "age") {
-
-                    showCCMToast(
-                        UNDERAGE_MESSAGE,
-                        "error"
-                    );
-
-                } else if (result.changed) {
-
-                    showCCMToast(
-                        "Auto state updated",
-                        "success"
-                    );
-
-                } else {
-
-                    showCCMToast(
-                        "No state changes",
-                        "success"
-                    );
-
-                }
+                showCCMToast(
+                    result.changed
+                        ? `${card.name}'s state updated`
+                        : `No state changes for ${card.name}`,
+                    "success"
+                );
 
             } catch (error) {
 
                 console.error(
-                    "[CCM] Auto State Update Failed",
+                    `[CCM] Auto state update failed for ${card.name}`,
                     error
                 );
 
                 showCCMToast(
-                    "Auto state update failed",
+                    `${card.name}'s state update failed: ${getSafeErrorMessage(error, "The AI request failed.")}`,
                     "error"
                 );
-
             }
-
         }
-
     }
 
     if (shouldRunKnowledge) {
@@ -756,133 +758,100 @@ async function runAutoUpdates(
             );
 
         if (
-            settings.lastKnowledgeHash === knowledgeHash
+            settings.lastKnowledgeHash !== knowledgeHash
         ) {
-
-            console.log(
-                "[CCM] Knowledge window unchanged"
-            );
-
-        } else if (
-            knowledgeMessages !== lastAutoKnowledgeText
-        ) {
-
-            lastAutoKnowledgeText =
-                knowledgeMessages;
-
-            console.log(
-                "[CCM] Auto Knowledge Update"
-            );
 
             showCCMToast(
-                "Auto knowledge update in progress..."
+                `Updating ${card.name}'s knowledge...`
             );
 
             try {
 
-                const knowledgeResult =
+                const result =
                     await updateCharacterKnowledge(
-                        ccmCharacter.id,
-                        knowledgeMessages
+                        character.id,
+                        knowledgeMessages,
+                        context.groupId || ""
                     );
 
                 hashUpdates.lastKnowledgeHash =
                     knowledgeHash;
 
-                settingsChanged =
-                    true;
+                settingsChanged = true;
+                shouldRefresh = true;
 
-                shouldRefresh =
-                    true;
-
-                if (knowledgeResult.changed) {
-
-                    showCCMToast(
-                        "Knowledge updated",
-                        "success"
-                    );
-
-                } else {
-
-                    showCCMToast(
-                        "No knowledge changes",
-                        "success"
-                    );
-
-                }
+                showCCMToast(
+                    result.changed
+                        ? `${card.name}'s knowledge updated`
+                        : `No knowledge changes for ${card.name}`,
+                    "success"
+                );
 
             } catch (error) {
 
                 console.error(
-                    "[CCM] Auto Knowledge Update Failed",
+                    `[CCM] Auto knowledge update failed for ${card.name}`,
                     error
                 );
 
                 showCCMToast(
-                    "Auto knowledge update failed",
+                    `${card.name}'s knowledge update failed: ${getSafeErrorMessage(error, "The AI request failed.")}`,
                     "error"
                 );
-
             }
-
         }
-
     }
 
     if (settingsChanged) {
 
-        // Re-read settings before saving: the awaited AI
-        // calls above give the user time to change them,
-        // and saving a stale snapshot would revert that.
         const current =
-            getCharacter(
-                ccmCharacter.id
+            getScopedCharacter(
+                character.id,
+                context.groupId || ""
             );
 
         if (current) {
 
-            updateCharacter(
-                ccmCharacter.id,
+            updateScopedCharacter(
+                character.id,
                 {
                     settings: {
                         ...current.settings,
                         ...hashUpdates
                     }
-                }
+                },
+                context.groupId || ""
             );
-
         }
-
     }
 
     if (shouldRefresh) {
 
-        const panel =
+        const container =
             document.getElementById(
-                "ccm-panel"
-            );
-
-        const dashboardOpen =
-            document.getElementById(
-                "ccm-dashboard-edit"
+                "ccm-character-list"
             );
 
         if (
-            panel &&
-            getComputedStyle(panel).display !== "none" &&
-            dashboardOpen
+            container?.dataset
+                ?.ccmCharacterId === character.id
         ) {
-
             renderCharacterDashboard(
-                ccmCharacter.id
+                character.id,
+                context.groupId || ""
             );
-
-        } else {
-
-            renderCharacterList();
-
+        } else if (
+            container &&
+            !container.dataset
+                ?.ccmCharacterId
+        ) {
+            if (context.groupId) {
+                renderGroupDashboard(
+                    context.groupId
+                );
+            } else {
+                renderCharacterList();
+            }
         }
-
     }
-
 }

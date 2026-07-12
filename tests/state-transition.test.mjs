@@ -169,3 +169,89 @@ test("a repeated standing update clears an already-stale seated pose", () => {
     assert.equal(merged.data.positionDetail.value, "");
     assert.equal(merged.data.area.value, "On the rug");
 });
+
+// --- Legs field lifecycle ---
+
+test("a posture change clears a stale leg pose", () => {
+    const previous = {
+        position: field("Sitting"),
+        positionDetail: field("Sitting on the couch"),
+        legs: field("Legs crossed"),
+        area: field("On the couch")
+    };
+    const incoming = {
+        position: field("Standing"),
+        positionDetail: field("", 0),
+        legs: field("", 0),
+        area: field("", 0)
+    };
+
+    const reconciled = reconcilePostureTransition(previous, incoming);
+    const merged = mergeData(previous, reconciled);
+
+    assert.equal(merged.data.legs.value, "");
+});
+
+test("an unchanged posture keeps the stored leg pose", () => {
+    const previous = {
+        position: field("Sitting"),
+        positionDetail: field(""),
+        legs: field("Legs spread slightly"),
+        area: field("On the bed")
+    };
+    const incoming = {
+        position: field("", 0),
+        positionDetail: field("", 0),
+        legs: field("", 0),
+        area: field("", 0)
+    };
+
+    const reconciled = reconcilePostureTransition(previous, incoming);
+    const merged = mergeData(previous, reconciled);
+
+    assert.equal(merged.data.legs.value, "Legs spread slightly");
+});
+
+test("a standing-incompatible incoming leg pose is dropped", () => {
+    const previous = {
+        position: field("Standing"),
+        positionDetail: field(""),
+        legs: field(""),
+        area: field("")
+    };
+    const incoming = {
+        position: field("", 0),
+        positionDetail: field("", 0),
+        legs: field("Knees drawn up", 75),
+        area: field("", 0)
+    };
+
+    const reconciled = reconcilePostureTransition(previous, incoming);
+    const merged = mergeData(previous, reconciled);
+
+    assert.equal(merged.data.legs.value, "");
+});
+
+test("a locked legs field survives a posture change", () => {
+    const previous = {
+        position: field("Sitting"),
+        positionDetail: field(""),
+        legs: field("Legs crossed"),
+        area: field("")
+    };
+    const incoming = {
+        position: field("Standing"),
+        positionDetail: field("", 0),
+        legs: field("", 0),
+        area: field("", 0)
+    };
+
+    const reconciled = reconcilePostureTransition(
+        previous,
+        incoming,
+        { legs: true }
+    );
+    const merged = mergeData(previous, reconciled, { legs: true });
+
+    assert.equal(merged.data.legs.value, "Legs crossed");
+});

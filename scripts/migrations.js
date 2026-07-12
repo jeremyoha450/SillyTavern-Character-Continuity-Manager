@@ -1,7 +1,7 @@
 // scripts/migrations.js
 
-export const DATABASE_VERSION = 4;
-export const AI_SETTINGS_VERSION = 6;
+export const DATABASE_VERSION = 5;
+export const AI_SETTINGS_VERSION = 7;
 
 export function migrateDatabase(value) {
 
@@ -62,6 +62,16 @@ export function migrateDatabase(value) {
         version = 4;
     }
 
+    if (version < 5) {
+        database.groups =
+            database.groups &&
+            typeof database.groups === "object"
+                ? database.groups
+                : {};
+
+        version = 5;
+    }
+
     database.version =
         DATABASE_VERSION;
 
@@ -69,6 +79,12 @@ export function migrateDatabase(value) {
         database.characters &&
         typeof database.characters === "object"
             ? database.characters
+            : {};
+
+    database.groups =
+        database.groups &&
+        typeof database.groups === "object"
+            ? database.groups
             : {};
 
     for (
@@ -93,6 +109,10 @@ export function migrateAISettings(value) {
 
     return {
         version: AI_SETTINGS_VERSION,
+        aiSource:
+            source.aiSource === "sillytavern"
+                ? "sillytavern"
+                : "ccm",
         driver:
             typeof source.driver === "string"
                 ? source.driver

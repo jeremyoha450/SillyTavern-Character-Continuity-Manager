@@ -3,6 +3,16 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "test": "node --test"
+        "test": "node --test",
+        "test:browser": "playwright test -c tests/browser/playwright.config.mjs",
+        "check:syntax": "node tools/checks.mjs syntax",
+        "check:json": "node tools/checks.mjs json",
+        "check:whitespace": "git diff --check",
+        "release:build": "node tools/release.mjs build",
+        "release:compare": "node tools/release.mjs compare",
+        "release:verify": "node tools/release.mjs verify"
+    },
+    "devDependencies": {
+        "@playwright/test": "^1.61.1"
     }
 }

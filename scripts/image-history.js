@@ -1,7 +1,9 @@
 import {
-    getCharacter,
-    updateCharacter
+    getScopedCharacter,
+    updateScopedCharacter
 } from "./database.js";
+
+export const IMAGE_HISTORY_LIMIT = 200;
 
 function generateImageRecordId() {
     return (
@@ -15,10 +17,14 @@ function generateImageRecordId() {
 }
 
 export function getImageHistory(
-    characterId
+    characterId,
+    groupId = ""
 ) {
     const character =
-        getCharacter(characterId);
+        getScopedCharacter(
+            characterId,
+            groupId
+        );
 
     return Array.isArray(
         character?.imageHistory
@@ -29,9 +35,13 @@ export function getImageHistory(
 
 export function getImageRecord(
     characterId,
-    recordId
+    recordId,
+    groupId = ""
 ) {
-    return getImageHistory(characterId)
+    return getImageHistory(
+        characterId,
+        groupId
+    )
         .find(record =>
             record.id === recordId
         );
@@ -39,7 +49,8 @@ export function getImageRecord(
 
 export function addImageRecord(
     characterId,
-    values
+    values,
+    groupId = ""
 ) {
     const record = {
         id: generateImageRecordId(),
@@ -57,12 +68,17 @@ export function addImageRecord(
 
     const history = [
         record,
-        ...getImageHistory(characterId)
-    ];
+        ...getImageHistory(
+            characterId,
+            groupId
+        )
+    ].slice(0, IMAGE_HISTORY_LIMIT);
 
-    updateCharacter(characterId, {
-        imageHistory: history
-    });
+    updateScopedCharacter(
+        characterId,
+        { imageHistory: history },
+        groupId
+    );
 
     return record;
 }
@@ -70,12 +86,16 @@ export function addImageRecord(
 export function updateImageRecord(
     characterId,
     recordId,
-    updates
+    updates,
+    groupId = ""
 ) {
     let updated = null;
 
     const history =
-        getImageHistory(characterId)
+        getImageHistory(
+            characterId,
+            groupId
+        )
             .map(record => {
                 if (record.id !== recordId) {
                     return record;
@@ -91,24 +111,32 @@ export function updateImageRecord(
 
     if (!updated) return null;
 
-    updateCharacter(characterId, {
-        imageHistory: history
-    });
+    updateScopedCharacter(
+        characterId,
+        { imageHistory: history },
+        groupId
+    );
 
     return updated;
 }
 
 export function removeImageRecord(
     characterId,
-    recordId
+    recordId,
+    groupId = ""
 ) {
     const history =
-        getImageHistory(characterId)
+        getImageHistory(
+            characterId,
+            groupId
+        )
             .filter(record =>
                 record.id !== recordId
             );
 
-    updateCharacter(characterId, {
-        imageHistory: history
-    });
+    updateScopedCharacter(
+        characterId,
+        { imageHistory: history },
+        groupId
+    );
 }

@@ -25,7 +25,9 @@ const ANATOMY_PRESENT = {
     "no pubic hair": /\bpubic hair\b/i,
     "female pubic hair": /\bpubic hair\b/i,
     "pussy juice": /\bpussy juice\b|\bwet pussy\b/i,
+    "swollen pussy": /\bswollen (?:pussy|vulva)\b/i,
     "penis": /\bpenis\b/i,
+    "swollen penis": /\bswollen penis\b/i,
     "large penis": /\blarge penis\b/i,
     "small penis": /\bsmall penis\b/i,
     "erection": /\berect(?:ion)?\b/i,
@@ -43,6 +45,94 @@ function absent(value) {
 
 function hasValue(value) {
     return Boolean(String(value || "").trim());
+}
+
+// A covering (blanket, towel, sheet) suspends nudity: the
+// character is not nude until it is removed, recorded as a
+// "no covering"-style value.
+export function hasActiveCovering(state = {}) {
+    const covering = String(state.covering || "").trim();
+    return Boolean(covering) && !/^no\b/i.test(covering);
+}
+
+// Nudity and anatomy phrases that must not survive in the
+// prompt while a covering is active. Longer alternatives
+// come first so "completely nude" wins over "nude" and
+// "swollen pussy" over "pussy".
+const COVERED_FORBIDDEN =
+    /\b(?:completely nude|underwear only|no pubic hair|female pubic hair|pubic hair|pussy juice|wet pussy|swollen pussy|swollen penis|erect penis|large penis|small penis|nude|naked|topless|bottomless|undressed|unclothed|nipples?|areolae?|pussy|vulva|vagina|labia|clitoris|clit|erection|flaccid|penis|testicles)\b/gi;
+
+function stripCoveredNudity(positive) {
+    return positive
+        .replace(COVERED_FORBIDDEN, " ")
+        .replace(/\s+/g, " ")
+        .replace(/(?:\s*,\s*)+/g, ", ")
+        .replace(/\s+([.!?])/g, "$1")
+        .replace(/^[\s,]+/, "")
+        .replace(/[\s,]+$/, "")
+        .trim();
+}
+
+// Exposure terms pushed into the negative prompt while a
+// covering is active, so the image model keeps the covering
+// in place instead of exposing the torso beneath it.
+const COVERED_NEGATIVE_TERMS =
+    "nude, completely nude, topless, bottomless, nipples, exposed breasts, bare chest, bare stomach, navel, exposed torso, pussy, groin, blanket slipping, covers pulled down";
+
+const COVERING_WORD =
+    /\b(?:blanket|duvet|quilt|comforter|sheet|bedding|covers|towel)\b/i;
+
+// Positive-prompt anchor tags the image model actually
+// understands for each covering kind.
+function coveringAnchorTags(covering) {
+    const item = covering.toLowerCase();
+
+    if (/towel/.test(item)) {
+        return ["towel"];
+    }
+
+    if (/blanket|duvet|quilt|comforter/.test(item)) {
+        return ["blanket", "under covers"];
+    }
+
+    if (/sheet|bedding|covers/.test(item)) {
+        return ["under covers"];
+    }
+
+    return [];
+}
+
+function reinforceCovering(positive, state, preset) {
+    const covering = String(state.covering || "").trim();
+
+    if (preset?.mode === "natural-language") {
+        if (COVERING_WORD.test(positive)) {
+            return positive;
+        }
+
+        const sentence =
+            covering.charAt(0).toUpperCase() +
+            covering.slice(1);
+
+        return positive
+            ? `${positive.replace(/\.?\s*$/, ". ")}${sentence}.`
+            : `${sentence}.`;
+    }
+
+    const missing =
+        coveringAnchorTags(covering)
+            .filter(tag =>
+                !new RegExp(`\\b${tag}\\b`, "i")
+                    .test(positive)
+            );
+
+    if (!missing.length) {
+        return positive;
+    }
+
+    return positive
+        ? `${positive}, ${missing.join(", ")}`
+        : missing.join(", ");
 }
 
 export function deriveNudityTag(state = {}) {
@@ -113,6 +203,16 @@ export function deriveAnatomyTags(state = {}, nudityTag) {
         if (/wet|dripping|soak|moist|juice/.test(wetness)) {
             tags.push("pussy juice");
         }
+
+        // Conditions describe the organ, so the tag must
+        // name it: bare "swollen" reads as a general body
+        // condition to the image model.
+        const condition =
+            String(state.pussyCondition || "").toLowerCase();
+
+        if (/swollen|puffy/.test(condition)) {
+            tags.push("swollen pussy");
+        }
     }
 
     if (lowerBare && male) {
@@ -133,6 +233,13 @@ export function deriveAnatomyTags(state = {}, nudityTag) {
             tags.push("erection");
         } else if (/soft|flaccid/.test(hardness)) {
             tags.push("flaccid");
+        }
+
+        const condition =
+            String(state.penisCondition || "").toLowerCase();
+
+        if (/swollen|puffy/.test(condition)) {
+            tags.push("swollen penis");
         }
     }
 
@@ -158,11 +265,17 @@ function anatomySentence(additions, state) {
             phrase = `smooth shaved ${phrase}`;
         }
 
+        if (additions.includes("swollen pussy")) {
+            phrase = `swollen ${phrase}`;
+        }
+
         if (additions.includes("pussy juice")) {
             phrase = `${phrase}, glistening wet`;
         }
 
         parts.push(phrase);
+    } else if (additions.includes("swollen pussy")) {
+        parts.push("swollen pussy");
     }
 
     if (additions.includes("penis")) {
@@ -180,7 +293,13 @@ function anatomySentence(additions, state) {
             phrase = `flaccid ${phrase}`;
         }
 
+        if (additions.includes("swollen penis")) {
+            phrase = `swollen ${phrase}`;
+        }
+
         parts.push(phrase);
+    } else if (additions.includes("swollen penis")) {
+        parts.push("swollen penis");
     }
 
     if (!parts.length) {
@@ -194,6 +313,40 @@ function anatomySentence(additions, state) {
 
 export function applyNudityBackstop(parsed, state, preset) {
     const positive = String(parsed?.positive || "");
+
+    // While covered she is not nude: never inject nudity or
+    // anatomy tags, strip any the model echoed anyway,
+    // anchor the covering in the positive prompt, and push
+    // exposure terms into the negative prompt so the image
+    // model keeps the covering in place.
+    if (hasActiveCovering(state)) {
+        const cleaned = reinforceCovering(
+            stripCoveredNudity(positive),
+            state,
+            preset
+        );
+
+        const baseNegative = String(
+            parsed?.negative ||
+            preset?.negativePrompt ||
+            ""
+        ).trim();
+
+        const negative = baseNegative
+            ? `${baseNegative}, ${COVERED_NEGATIVE_TERMS}`
+            : "";
+
+        if (cleaned === positive && !negative) {
+            return parsed;
+        }
+
+        return {
+            ...parsed,
+            positive: cleaned,
+            ...(negative ? { negative } : {})
+        };
+    }
+
     const tag = deriveNudityTag(state);
 
     if (!tag) {

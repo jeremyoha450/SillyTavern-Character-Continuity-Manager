@@ -11,31 +11,38 @@ import {
     BUILT_IN_HEIGHT_CONFIG
 } from "../scripts/config/height-defaults.js";
 
-import {
-    isUnderage
-} from "../scripts/extraction/age-guard.js";
-
 function makeFacts({
     age = "25",
     gender = "female",
-    species = "Human",
     height = ""
 } = {}) {
     return {
         age: { value: age, confidence: 80 },
         gender: { value: gender, confidence: 80 },
-        species: { value: species, confidence: 80 },
         height: { value: height, confidence: 0 }
     };
 }
 
+// Distinct numbers per age so tests can tell which entry
+// was used. The 20 -> 23 gap exercises nearest/floor.
 function makeConfig(overrides = {}) {
     return {
-        defaults: {
-            female: { short: 152, average: 163, tall: 172 },
-            male: { short: 165, average: 176, tall: 188 }
+        byAge: {
+            "18": {
+                female: { short: 152, average: 163, tall: 172 },
+                male: { short: 165, average: 176, tall: 188 }
+            },
+            "20": {
+                female: { short: 154, average: 165, tall: 174 },
+                male: { short: 167, average: 178, tall: 190 }
+            },
+            "23": {
+                female: { short: 155, average: 166, tall: 175 },
+                male: { short: 168, average: 180, tall: 192 }
+            }
         },
-        speciesOverrides: {},
+        fallback: "nearest",
+        unknownAge: "youngest",
         varietyCm: 0,
         format: "{cm} cm",
         keywords: {
@@ -46,57 +53,141 @@ function makeConfig(overrides = {}) {
     };
 }
 
-// --- Blank height: average band ---
+function fill(facts, config = makeConfig()) {
+    return postProcessFacts(facts, {
+        characterId: "char_1",
+        heightConfig: config
+    });
+}
 
-test("fills a blank height for an adult from the average default", () => {
+// --- Age resolution ---
 
-    const result = postProcessFacts(
-        makeFacts(),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+test("exact age match uses that entry", () => {
+
+    const result = fill(
+        makeFacts({ age: "20" })
     );
 
-    assert.equal(result.height.value, "163 cm");
+    assert.equal(result.height.value, "165 cm");
     assert.equal(result.height.confidence, 25);
 
 });
 
-test("respects a custom defaults config", () => {
+test("ages above the highest entry clamp to it", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ gender: "male" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig({
-                defaults: {
-                    female: { short: 150, average: 170, tall: 180 },
-                    male: { short: 170, average: 190, tall: 200 }
-                }
-            })
-        }
+    const result = fill(
+        makeFacts({ age: "40" })
     );
 
-    assert.equal(result.height.value, "190 cm");
+    assert.equal(result.height.value, "166 cm");
+
+});
+
+test("nearest fallback picks the closest defined age", () => {
+
+    // 22 sits in the 20..23 gap: |22-23| = 1 beats |22-20| = 2.
+    const result = fill(
+        makeFacts({ age: "22" })
+    );
+
+    assert.equal(result.height.value, "166 cm");
+
+});
+
+test("floor fallback picks the highest defined age at or below", () => {
+
+    const result = fill(
+        makeFacts({ age: "22" }),
+        makeConfig({ fallback: "floor" })
+    );
+
+    assert.equal(result.height.value, "165 cm");
+
+});
+
+test("nearest ties round down to the lower age", () => {
+
+    const config = makeConfig({
+        byAge: {
+            "20": {
+                female: { short: 154, average: 165, tall: 174 },
+                male: { short: 167, average: 178, tall: 190 }
+            },
+            "24": {
+                female: { short: 156, average: 167, tall: 176 },
+                male: { short: 169, average: 181, tall: 193 }
+            }
+        }
+    });
+
+    // 22 is equidistant from 20 and 24.
+    const result = fill(
+        makeFacts({ age: "22" }),
+        config
+    );
+
+    assert.equal(result.height.value, "165 cm");
+
+});
+
+test("floor with no entry at or below uses the lowest entry", () => {
+
+    const config = makeConfig({
+        fallback: "floor",
+        byAge: {
+            "20": {
+                female: { short: 154, average: 165, tall: 174 },
+                male: { short: 167, average: 178, tall: 190 }
+            },
+            "23": {
+                female: { short: 155, average: 166, tall: 175 },
+                male: { short: 168, average: 180, tall: 192 }
+            }
+        }
+    });
+
+    const result = fill(
+        makeFacts({ age: "18" }),
+        config
+    );
+
+    assert.equal(result.height.value, "165 cm");
+
+});
+
+test("unknownAge 'youngest' fills from the lowest entry", () => {
+
+    const result = fill(
+        makeFacts({ age: "unknown" })
+    );
+
+    assert.equal(result.height.value, "163 cm");
+
+});
+
+test("unknownAge 'blank' skips the fill", () => {
+
+    const result = fill(
+        makeFacts({ age: "unknown" }),
+        makeConfig({ unknownAge: "blank" })
+    );
+
+    assert.equal(result.height.value, "");
+    assert.equal(result.height.confidence, 0);
 
 });
 
 // --- Descriptor words ---
 
-test("'short' maps to the short band and keeps the word", () => {
+test("'petite' resolves via the resolved age's short band", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ height: "short" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const result = fill(
+        makeFacts({ age: "23", height: "petite" })
     );
 
     assert.equal(
         result.height.value,
-        "short (152 cm)"
+        "petite (155 cm)"
     );
     assert.equal(result.height.confidence, 50);
 
@@ -104,12 +195,12 @@ test("'short' maps to the short band and keeps the word", () => {
 
 test("'tall' maps to the tall band for the character's gender", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ gender: "male", height: "tall" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const result = fill(
+        makeFacts({
+            age: "18",
+            gender: "male",
+            height: "tall"
+        })
     );
 
     assert.equal(
@@ -120,31 +211,13 @@ test("'tall' maps to the tall band for the character's gender", () => {
 
 });
 
-test("'petite' resolves through the keyword list", () => {
-
-    const result = postProcessFacts(
-        makeFacts({ height: "petite" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
-    );
-
-    assert.equal(
-        result.height.value,
-        "petite (152 cm)"
-    );
-
-});
-
 test("descriptor keywords match as whole words inside phrases", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ height: "Towering and broad" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const result = fill(
+        makeFacts({
+            age: "18",
+            height: "Towering and broad"
+        })
     );
 
     assert.equal(
@@ -156,12 +229,8 @@ test("descriptor keywords match as whole words inside phrases", () => {
 
 test("an unmatched descriptor is left unchanged", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ height: "medium build" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const result = fill(
+        makeFacts({ height: "medium build" })
     );
 
     assert.equal(
@@ -182,13 +251,7 @@ for (
         const facts = makeFacts({ height: numeric });
         facts.height.confidence = 90;
 
-        const result = postProcessFacts(
-            facts,
-            {
-                characterId: "char_1",
-                heightConfig: makeConfig()
-            }
-        );
+        const result = fill(facts);
 
         assert.equal(result.height.value, numeric);
         assert.equal(result.height.confidence, 90);
@@ -197,122 +260,49 @@ for (
 
 }
 
-// --- Species overrides ---
+// --- Guards ---
 
-test("species override wins over defaults (case-insensitive)", () => {
-
-    const result = postProcessFacts(
-        makeFacts({ species: "Elf" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig({
-                speciesOverrides: {
-                    "ELF": {
-                        female: { short: 170, average: 180, tall: 195 }
-                    }
-                }
-            })
-        }
-    );
-
-    assert.equal(result.height.value, "180 cm");
-
-});
-
-test("species override short/tall bands are respected", () => {
+test("under-18 characters use configured age defaults", () => {
 
     const config = makeConfig({
-        speciesOverrides: {
-            "elf": {
-                female: { short: 170, average: 180, tall: 195 }
+        byAge: {
+            "16": {
+                female: { short: 140, average: 160, tall: 180 },
+                male: { short: 150, average: 170, tall: 190 }
             }
         }
     });
 
-    const short = postProcessFacts(
-        makeFacts({ species: "Elf", height: "short" }),
-        { characterId: "char_1", heightConfig: config }
-    );
-
-    const tall = postProcessFacts(
-        makeFacts({ species: "Elf", height: "tall" }),
-        { characterId: "char_1", heightConfig: config }
-    );
-
-    assert.equal(short.height.value, "short (170 cm)");
-    assert.equal(tall.height.value, "tall (195 cm)");
-
-});
-
-test("zero-valued species override bands fall through to defaults", () => {
-
-    const result = postProcessFacts(
-        makeFacts({ species: "example-species" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig({
-                speciesOverrides: {
-                    "example-species": {
-                        female: { short: 0, average: 0, tall: 0 },
-                        male: { short: 0, average: 0, tall: 0 }
-                    }
-                }
-            })
-        }
-    );
-
-    assert.equal(result.height.value, "163 cm");
-
-});
-
-// --- Guards ---
-
-test("under-18 characters never get a height fill", () => {
-
-    const blank = postProcessFacts(
+    const blank = fill(
         makeFacts({ age: "16" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+        config
     );
 
-    assert.equal(blank.height.value, "");
-    assert.equal(blank.height.confidence, 0);
+    assert.equal(blank.height.value, "160 cm");
+    assert.equal(blank.height.confidence, 25);
 
-    const descriptor = postProcessFacts(
+    const descriptor = fill(
         makeFacts({ age: "16", height: "short" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+        config
     );
 
     assert.equal(
         descriptor.height.value,
-        "short"
+        "short (140 cm)"
     );
 
 });
 
 test("unknown gender leaves height unchanged", () => {
 
-    const blank = postProcessFacts(
-        makeFacts({ gender: "" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const blank = fill(
+        makeFacts({ gender: "" })
     );
 
     assert.equal(blank.height.value, "");
 
-    const descriptor = postProcessFacts(
-        makeFacts({ gender: "", height: "tall" }),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig()
-        }
+    const descriptor = fill(
+        makeFacts({ gender: "", height: "tall" })
     );
 
     assert.equal(descriptor.height.value, "tall");
@@ -330,8 +320,14 @@ test("variety offset is deterministic per character and stays in range", () => {
         heightConfig: config
     };
 
-    const first = postProcessFacts(makeFacts(), options);
-    const second = postProcessFacts(makeFacts(), options);
+    const first = postProcessFacts(
+        makeFacts({ age: "18" }),
+        options
+    );
+    const second = postProcessFacts(
+        makeFacts({ age: "18" }),
+        options
+    );
 
     assert.equal(
         first.height.value,
@@ -348,12 +344,9 @@ test("variety offset is deterministic per character and stays in range", () => {
 
 test("variety applies on top of a descriptor baseline", () => {
 
-    const result = postProcessFacts(
-        makeFacts({ height: "short" }),
-        {
-            characterId: "char_stable_id",
-            heightConfig: makeConfig({ varietyCm: 5 })
-        }
+    const result = fill(
+        makeFacts({ age: "18", height: "short" }),
+        makeConfig({ varietyCm: 5 })
     );
 
     const cm = Number(
@@ -370,14 +363,11 @@ test("variety applies on top of a descriptor baseline", () => {
 
 test("custom format template is applied", () => {
 
-    const result = postProcessFacts(
-        makeFacts(),
-        {
-            characterId: "char_1",
-            heightConfig: makeConfig({
-                format: "about {cm} centimeters"
-            })
-        }
+    const result = fill(
+        makeFacts({ age: "18" }),
+        makeConfig({
+            format: "about {cm} centimeters"
+        })
     );
 
     assert.equal(
@@ -391,19 +381,15 @@ test("custom format template is applied", () => {
 
 test("a well-formed config validates", () => {
 
-    const validated = validateHeightConfig(makeConfig({
-        speciesOverrides: {
-            "example-species": {
-                female: { short: 0, average: 0, tall: 0 }
-            }
-        }
-    }));
+    const validated =
+        validateHeightConfig(makeConfig());
 
     assert.ok(validated);
     assert.equal(
-        validated.defaults.female.average,
-        163
+        validated.byAge["20"].female.average,
+        165
     );
+    assert.equal(validated.fallback, "nearest");
     assert.deepEqual(
         validated.keywords.short,
         ["short", "petite", "small", "tiny"]
@@ -416,32 +402,63 @@ for (
         ["null", null],
         ["array", []],
         [
-            "missing defaults",
-            makeConfig({ defaults: undefined })
+            "missing byAge",
+            makeConfig({ byAge: undefined })
         ],
         [
-            "old flat defaults shape",
-            makeConfig({
-                defaults: { female: 163, male: 176 }
-            })
+            "empty byAge",
+            makeConfig({ byAge: {} })
         ],
         [
-            "defaults missing a band",
+            "non-positive byAge key",
             makeConfig({
-                defaults: {
-                    female: { short: 152, average: 163, tall: 172 },
-                    male: { short: 165, average: 176 }
+                byAge: {
+                    "0": {
+                        female: { short: 150, average: 160, tall: 170 },
+                        male: { short: 160, average: 170, tall: 180 }
+                    }
                 }
             })
         ],
         [
-            "non-numeric band value",
+            "non-integer byAge key",
             makeConfig({
-                defaults: {
-                    female: { short: 152, average: "163", tall: 172 },
-                    male: { short: 165, average: 176, tall: 188 }
+                byAge: {
+                    "adult": {
+                        female: { short: 150, average: 160, tall: 170 },
+                        male: { short: 160, average: 170, tall: 180 }
+                    }
                 }
             })
+        ],
+        [
+            "entry missing male",
+            makeConfig({
+                byAge: {
+                    "18": {
+                        female: { short: 150, average: 160, tall: 170 }
+                    }
+                }
+            })
+        ],
+        [
+            "zero band value",
+            makeConfig({
+                byAge: {
+                    "18": {
+                        female: { short: 0, average: 160, tall: 170 },
+                        male: { short: 160, average: 170, tall: 180 }
+                    }
+                }
+            })
+        ],
+        [
+            "invalid fallback",
+            makeConfig({ fallback: "ceiling" })
+        ],
+        [
+            "invalid unknownAge",
+            makeConfig({ unknownAge: "oldest" })
         ],
         [
             "negative varietyCm",
@@ -461,14 +478,6 @@ for (
                 keywords: {
                     short: "short",
                     tall: ["tall"]
-                }
-            })
-        ],
-        [
-            "negative species override band",
-            makeConfig({
-                speciesOverrides: {
-                    elf: { female: { short: -1 } }
                 }
             })
         ]
@@ -513,24 +522,5 @@ test("shipped config file is valid", async () => {
     );
 
     assert.ok(validateHeightConfig(raw));
-
-});
-
-// --- Age guard ---
-
-test("isUnderage flags numeric ages below 18 only", () => {
-
-    const facts = age => ({
-        age: { value: age, confidence: 80 }
-    });
-
-    assert.equal(isUnderage(facts("16")), true);
-    assert.equal(isUnderage(facts("17")), true);
-    assert.equal(isUnderage(facts("18")), false);
-    assert.equal(isUnderage(facts("25")), false);
-    assert.equal(isUnderage(facts("")), false);
-    assert.equal(isUnderage(facts("unknown")), false);
-    assert.equal(isUnderage({}), false);
-    assert.equal(isUnderage(null), false);
 
 });

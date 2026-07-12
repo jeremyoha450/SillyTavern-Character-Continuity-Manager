@@ -3,6 +3,8 @@
 import {
     readJsonResponse
 } from "./openai-transport.js";
+import { createProviderError } from "../provider-error.js";
+import { fetchWithTimeout } from "./request.js";
 
 const ENDPOINT =
     "https://generativelanguage.googleapis.com/v1beta";
@@ -86,7 +88,7 @@ const geminiDriver = {
     async listModels(settings) {
 
         const response =
-            await fetch(
+            await fetchWithTimeout(
                 `${ENDPOINT}/models?pageSize=1000`,
                 {
                     headers:
@@ -157,7 +159,7 @@ const geminiDriver = {
         }
 
         const response =
-            await fetch(
+            await fetchWithTimeout(
                 `${ENDPOINT}/models/${encodeURIComponent(model)}:generateContent`,
                 {
                     method: "POST",
@@ -179,19 +181,48 @@ const geminiDriver = {
                 ?.map(part => part?.text || "")
                 .join("") || "";
 
-        if (!content) {
-            const reason =
-                data?.promptFeedback?.blockReason;
+        const finishReason = data?.candidates?.[0]?.finishReason || "";
+        const blockReason = data?.promptFeedback?.blockReason || "";
 
-            throw new Error(
-                reason
-                    ? `Gemini blocked the request: ${reason}.`
-                    : "Gemini returned no message content."
-            );
+        if (finishReason === "MAX_TOKENS") {
+            const error = createProviderError(this.name, response, data, {
+                category: "output_limit",
+                finishReason
+            });
+            error.retryableAIOutput = true;
+            error.debugRawOutput = content;
+            throw error;
         }
 
-        return {
-            result: task.parse(content),
+        if ([
+            "SAFETY", "RECITATION", "BLOCKLIST", "PROHIBITED_CONTENT",
+            "SPII", "IMAGE_SAFETY", "MODEL_ARMOR"
+        ].includes(finishReason) || blockReason) {
+            throw createProviderError(this.name, response, data, {
+                category: "content_filter",
+                code: blockReason,
+                finishReason
+            });
+        }
+
+        if (!content) {
+            throw createProviderError(this.name, response, data, {
+                category: "empty_response",
+                finishReason
+            });
+        }
+
+
+        let parsedResult;
+        try {
+            parsedResult = task.parse(content);
+        } catch (error) {
+            error.debugRawOutput = content;
+            throw error;
+        }
+
+        const parsedResponse = {
+            result: parsedResult,
             model:
                 data?.modelVersion || model,
             usage: {
@@ -206,6 +237,8 @@ const geminiDriver = {
                         ?.totalTokenCount
             }
         };
+        Object.defineProperty(parsedResponse, "debugRawOutput", { value: content });
+        return parsedResponse;
     }
 };
 

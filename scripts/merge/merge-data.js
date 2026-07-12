@@ -6,9 +6,6 @@ export function mergeData(
     locks = {}
 ) {
 	
-	    console.log(
-        "[CCM] Running Merge Data"
-    );
 
     const merged =
         structuredClone(
@@ -38,6 +35,29 @@ export function mergeData(
 
         if (field.value == null) {
             field.value = "";
+        }
+
+        if (field.clear === true) {
+            const current = merged[key];
+
+            if (!current?.value) {
+                continue;
+            }
+
+            const oldValue = structuredClone(current);
+
+            merged[key] = {
+                value: "",
+                confidence: 0
+            };
+
+            changes.push({
+                field: key,
+                old: oldValue,
+                new: structuredClone(merged[key])
+            });
+
+            continue;
         }
 
         if (field.confidence <= 0) {

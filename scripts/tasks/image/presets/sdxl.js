@@ -18,7 +18,7 @@ RULES
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- If the state specifies a position, pose, head position, or eye direction, describe it exactly. Only when the state specifies none of these, default to: facing the viewer, looking at the viewer.
+- If the state specifies a position, pose, leg position, head position, or eye direction, describe it exactly in natural phrasing (legs "Legs spread slightly" -> "her legs parted slightly"; "Legs crossed" -> "her legs crossed"). Only when the state specifies none of these, default to: facing the viewer, looking at the viewer.
 - Do not add quality boilerplate (masterpiece, best quality, 8k, award-winning); the preset formatter supplies quality terms.
 - Avoid contradictory and redundant descriptions.
 SETTING RULES
@@ -33,11 +33,17 @@ DESCRIPTION NORMALIZATION RULES
 CLOTHING AND ACTION RULES
 - Never describe clothing being pulled, lifted, removed, or displaced unless the state explicitly describes that action.
 - Do not infer or imply any action not present in state. Omit anything that adds behaviour, interaction, or clothing change beyond what is explicitly described.
+USER PRESENCE RULES
+- The user is the viewer. When the state describes physical contact with the user or the user's body (sitting on the user's lap, pressed against the user, gripping the user's skin, face buried in the user's neck), compose the image first-person from the user's viewpoint: the character interacts with a partially visible person whose perspective the camera shares (e.g. "seen from her partner's point of view, she sits on their lap, arms wrapped around them, face buried in their neck").
+- In that case never describe her as alone, and include only the parts of the user's body the contact requires (a lap, an arm, a shoulder) — never invent the user's face or full appearance.
+- Never leave a hand description dangling ("her left hand gripping"): a hand acting on the user becomes part of the interaction ("her hands gripping her partner's shoulders").
 COVERAGE AND ANATOMY RULES
 - COVERAGE RULES OVERRIDE ALL OTHER RULES, including the rule to preserve state exactly. When state preservation and coverage conflict, coverage wins.
+- COVERING: the covering state field is a non-clothing item lying over the body (blanket, towel, sheet, duvet). While a covering is present the character IS NOT NUDE, regardless of the "no <garment>" clothing values underneath: never describe nudity or anatomy. Describe the covering and its extent instead ("she lies on the couch under a blanket pulled up to her shoulders"), mentioning only the parts it leaves visible (head, shoulders, arms). A "no covering" value means it was removed: the normal nudity rules apply again.
 - Default assumption: every body part is covered unless the state explicitly says it is bare, exposed, uncovered, or visible. Absence of information about a body part always means covered, never exposed.
 - Removed clothing is recorded as explicit "no <garment>" state values ("no shirt", "no bra", "no panties", "no shorts"). These explicitly state the area is bare — they are NOT missing information, and the covered-by-default assumption does not apply to them. Never invent replacement clothing for a removed garment. When every clothing and underwear field records its garment as absent, describe the character as completely nude, stated positively ("she is completely nude"); if only part of the body is bare, describe that part as bare (topless, bare below the waist, wearing only underwear).
-- When the character is nude, the anatomy state fields (pussy, pussyState, penis, penisState) describe exposed anatomy and are visual: include them positively in the description (e.g. "her smooth shaved pussy is visible, glistening wet"). They are non-visual only while covered by clothing.
+- When the character is nude, the anatomy state fields (pussy, pussyState, pussyCondition, penis, penisState, penisCondition) describe exposed anatomy and are visual AND MANDATORY: always mention the exposed genitalia in the description, with its state and condition (e.g. "her smooth shaved pussy is visible, glistening wet"). Omitting the exposed genitalia from a nude character's description is an error. They are non-visual only while covered by clothing.
+- Genital conditions must always name the organ: pussyCondition "Swollen" -> "her swollen pussy"; penisCondition "Swollen" -> "his swollen penis". Never describe a bare condition ("swollen", "sore") without saying what is swollen.
 - If the state describes the condition, sensation, arousal, wetness, irritation, injury, or appearance of an intimate body part that is currently covered by clothing, omit every mention of that body part and its condition entirely. A covered body part contributes zero words to the prompt, regardless of how much detail the state provides about it.
 - Never translate internal, physiological, or sensory state details (arousal, wetness, soreness, swelling, heat) into visible descriptions when the affected area is covered. These are non-visual details for a clothed character.
 - Never describe intimate anatomy as visible (chest, genitals, buttocks, navel, groin, or any intimate body part) unless the state explicitly and unambiguously describes that exact part as exposed or nude.
@@ -51,7 +57,7 @@ COVERAGE AND ANATOMY RULES
 - If any rule conflict arises, resolve it in favor of more coverage and less anatomy.
 GENERAL RULES
 - Use personality or relationship details only when they have a clear visible effect on expression or body language.
-- If only one character is described, make clear she or he is alone in the scene; never introduce other people.
+- If only one character is described and the state describes no physical contact with the user, make clear she or he is alone in the scene; never introduce other people. With user contact, follow the USER PRESENCE RULES instead.
 ]`,
     prefix: "",
     suffix: "",

@@ -11,7 +11,8 @@ import {
 export async function execute(
     taskId,
     input,
-    metadata = {}
+    metadata = {},
+    options = {}
 ) {
 
     const task =
@@ -30,7 +31,8 @@ export async function execute(
     return await executeTask(
         task,
         input,
-        metadata
+        metadata,
+        options
     );
 
 }

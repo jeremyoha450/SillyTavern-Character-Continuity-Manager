@@ -1,6 +1,20 @@
 // scripts/ui/status.js
 
+import {
+    createSafeErrorReport,
+    getSafeErrorMessage
+} from "../provider-error.js";
+
 let ccmStatusTimer = null;
+
+function escapeHtml(value) {
+    return String(value || "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
 
 
 export function showCCMStatus(
@@ -128,8 +142,15 @@ export function showCCMSuccess(
 }
 
 export function showCCMError(
-    message
+    message,
+    error = null,
+    context = "CCM operation"
 ) {
+
+    const displayMessage = error
+        ? getSafeErrorMessage(error, message)
+        : message;
+    const canCopy = Boolean(error);
 
     showCCMStatus(
         `
@@ -138,11 +159,12 @@ export function showCCMError(
         </div>
 
         <div style="font-size:22px;font-weight:bold;">
-            ${message}
+            ${escapeHtml(displayMessage)}
         </div>
 
         <br>
 
+        ${canCopy ? '<button id="ccm-status-copy-error" type="button">Copy Error Details</button>' : ""}
         <button id="ccm-status-ok">
             OK
         </button>
@@ -157,6 +179,22 @@ export function showCCMError(
             "click",
             () => hideCCMStatus()
         );
+
+    if (canCopy) {
+        document
+            .getElementById("ccm-status-copy-error")
+            ?.addEventListener("click", async event => {
+                const button = event.currentTarget;
+                try {
+                    await navigator.clipboard.writeText(
+                        createSafeErrorReport(error, context)
+                    );
+                    button.textContent = "Copied";
+                } catch {
+                    button.textContent = "Copy unavailable";
+                }
+            });
+    }
 }
 
 export function showCCMToast(
@@ -207,8 +245,7 @@ export function showCCMToast(
                 ? "❌"
                 : "🧠";
 
-    toast.innerHTML =
-        `${icon} ${message}`;
+    renderToastContent(toast, icon, message);
 
     requestAnimationFrame(
         () => {
@@ -227,5 +264,17 @@ export function showCCMToast(
         },
         3000
     );
+}
+
+// Toast messages can include imported card names and provider-derived text.
+// Keep the icon as presentation while treating every message as literal text.
+export function renderToastContent(toast, icon, message) {
+    const doc = toast.ownerDocument || document;
+    const iconNode = doc.createElement("span");
+    const messageNode = doc.createElement("span");
+    iconNode.setAttribute("aria-hidden", "true");
+    iconNode.textContent = String(icon || "");
+    messageNode.textContent = ` ${String(message ?? "")}`;
+    toast.replaceChildren(iconNode, messageNode);
 }
 

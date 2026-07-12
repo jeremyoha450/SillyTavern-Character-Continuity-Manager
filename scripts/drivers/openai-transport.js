@@ -1,5 +1,8 @@
 // scripts/drivers/openai-transport.js
 
+import { fetchWithTimeout } from "./request.js";
+import { createProviderError } from "../provider-error.js";
+
 export function normalizeEndpoint(endpoint) {
 
     return String(endpoint || "")
@@ -20,20 +23,7 @@ export async function readJsonResponse(
     }
 
     if (!response.ok) {
-        const detail =
-            data?.error?.message ||
-            (
-                typeof data?.error === "string"
-                    ? data.error
-                    : ""
-            ) ||
-            data?.message ||
-            response.statusText ||
-            "Request failed";
-
-        throw new Error(
-            `${providerName}: ${detail} (${response.status})`
-        );
+        throw createProviderError(providerName, response, data || {});
     }
 
     return data;
@@ -74,7 +64,7 @@ export async function listOpenAIModels({
     }
 
     const response =
-        await fetch(
+        await fetchWithTimeout(
             `${base}/models`,
             {
                 headers:
@@ -139,7 +129,7 @@ export async function sendOpenAIChat({
     }
 
     const response =
-        await fetch(
+        await fetchWithTimeout(
             `${base}/chat/completions`,
             {
                 method: "POST",
@@ -150,6 +140,13 @@ export async function sendOpenAIChat({
                     ),
                 body: JSON.stringify({
                     model: settings.model,
+                    // Several compatible servers default to a response limit
+                    // too small for CCM's full state schema, producing JSON
+                    // that simply stops halfway through an object.
+                    max_tokens:
+                        Number(settings.maxTokens) ||
+                        Number(task.maxTokens) ||
+                        4096,
                     temperature: task.temperature,
                     messages:
                         task.buildMessages(input)
@@ -167,16 +164,58 @@ export async function sendOpenAIChat({
         data?.choices?.[0]
             ?.message?.content;
 
+    const finishReason =
+        data?.choices?.[0]
+            ?.finish_reason;
+
+    if (data?.error || data?.choices?.[0]?.error || finishReason === "error") {
+        throw createProviderError(providerName, response, data, {
+            finishReason
+        });
+    }
+
+    if (
+        finishReason === "length" ||
+        finishReason === "max_tokens"
+    ) {
+        const error = createProviderError(providerName, response, data, {
+            category: "output_limit",
+            finishReason,
+            message: "Output limit reached."
+        });
+        error.retryableAIOutput = true;
+        error.debugRawOutput = typeof content === "string" ? content : "";
+        throw error;
+    }
+
+    if (["content_filter", "insufficient_system_resource"].includes(finishReason)) {
+        throw createProviderError(providerName, response, data, {
+            finishReason,
+            category: finishReason === "content_filter" ? "content_filter" : "provider_overloaded"
+        });
+    }
+
     if (typeof content !== "string") {
-        throw new Error(
-            `${providerName} returned no message content.`
-        );
+        const error = createProviderError(providerName, response, data, {
+            category: "empty_response",
+            message: "No message content."
+        });
+        error.retryableAIOutput = true;
+        throw error;
     }
 
     const usage = data?.usage || {};
 
-    return {
-        result: task.parse(content),
+    let parsedResult;
+    try {
+        parsedResult = task.parse(content);
+    } catch (error) {
+        error.debugRawOutput = content;
+        throw error;
+    }
+
+    const parsedResponse = {
+        result: parsedResult,
         model:
             data?.model || settings.model,
         usage: {
@@ -190,4 +229,6 @@ export async function sendOpenAIChat({
                 usage.total_tokens
         }
     };
+    Object.defineProperty(parsedResponse, "debugRawOutput", { value: content });
+    return parsedResponse;
 }

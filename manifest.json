@@ -6,6 +6,6 @@
   "js": "index.js",
   "css": "style.css",
   "author": "Jeremy O'Hara",
-  "version": "0.1.0",
+  "version": "1.0.0-rc1",
   "homePage": "https://github.com/jeremyoha450/SillyTavern-Character-Continuity-Manager"
 }

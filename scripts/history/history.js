@@ -3,7 +3,8 @@
 export function addHistory(
     character,
     type,
-    changes
+    changes,
+    details = {}
 ) {
 
     if (!character.history) {
@@ -16,7 +17,14 @@ export function addHistory(
 
         type,
 
-        changes
+        changes,
+
+        ...(details.message
+            ? {
+                message:
+                    String(details.message)
+            }
+            : {})
     });
 
     character.history =

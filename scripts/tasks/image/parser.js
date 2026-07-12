@@ -28,7 +28,16 @@ export function parse(text) {
             data.negativePrompt ||
             data.negative ||
             "";
-    } catch {
+    } catch (cause) {
+        if (/^[{[]/.test(cleaned)) {
+            const error = new Error(
+                "Image prompt response was not valid JSON.",
+                { cause }
+            );
+            error.aiOutput = text;
+            throw error;
+        }
+
         positive = cleaned.replace(
             /^(?:positive\s+)?prompt\s*:\s*/i,
             ""

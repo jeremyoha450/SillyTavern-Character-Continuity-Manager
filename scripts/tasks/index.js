@@ -15,6 +15,15 @@ from "./knowledge-update/index.js";
 import imagePromptTask
 from "./image/index.js";
 
+import characterCastPlanTask
+from "./character-creator/plan.js";
+
+import characterCardTask
+from "./character-creator/card.js";
+
+import characterCardFieldTask
+from "./character-creator/field.js";
+
 const tasks = {
 
     facts: factsTask,
@@ -25,7 +34,13 @@ const tasks = {
 	
 	"knowledge-update": knowledgeUpdateTask,
 
-    "image-prompt": imagePromptTask
+    "image-prompt": imagePromptTask,
+
+    "character-cast-plan": characterCastPlanTask,
+
+    "character-card": characterCardTask,
+
+    "character-card-field": characterCardFieldTask
 
 };
 

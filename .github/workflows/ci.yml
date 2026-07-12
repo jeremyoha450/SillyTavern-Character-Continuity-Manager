@@ -1,0 +1,24 @@
+name: CCM CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Parse JSON files
+        run: node -e "for (const f of ['manifest.json','package.json','config/heightDefaults.json','schema.json']) JSON.parse(require('fs').readFileSync(f,'utf8'))"
+      - name: Syntax check production JavaScript
+        run: find scripts -name '*.js' -print0 | xargs -0 -n1 node --check
+      - run: npm test
+      - run: npm run release:build
+      - name: Whitespace check
+        run: git diff --check

@@ -5,10 +5,6 @@
 // state. Pure functions: no side effects, config injected
 // by the caller.
 
-import {
-    isUnderage
-} from "./age-guard.js";
-
 const PLACEHOLDER_EXACT =
     /^(?:unknown|n\/a|none|unspecified|not\s+stated)$/i;
 
@@ -101,6 +97,144 @@ const STATE_DEFAULTS = {
     leftHand: "Left hand by side",
     rightHand: "Right hand by side"
 };
+
+// Per-character usual-outfit facts that replace the generic
+// clothing defaults when present.
+const USUAL_OUTFIT_SOURCES = {
+    upper: "usualUpper",
+    lower: "usualLower",
+    footwear: "usualFootwear"
+};
+
+// Semi-permanent fields owned by the facts extraction. A
+// non-empty value here permanently overwrites the stored
+// fact, so it must come from an explicit or strongly implied
+// change in the messages (confidence 75+), never from a
+// guess or inference.
+const OVERRIDE_FIELDS = [
+    "hairColor",
+    "hairStyle",
+    "bodyType",
+    "relationship",
+    "penis",
+    "pussy"
+];
+
+const OVERRIDE_MIN_CONFIDENCE = 75;
+
+// Anatomy overrides (pussy, penis) are permanent changes the
+// messages must actually describe. Models fabricate these
+// fields at confidence 100 (echoing the prompt's example
+// values like "Natural"), so confidence alone cannot be
+// trusted: without matching evidence in the recent messages
+// the value is dropped. The check is per-field, so it works
+// identically regardless of the character's gender.
+const GROOMING_EVIDENCE =
+    /\b(?:shav\w*|trim\w*|wax\w*|raz[oe]r|groom\w*|stubble|hairless|lasered?|bald)\b/i;
+
+const TRANSFORMATION_EVIDENCE =
+    /\b(?:circumcis\w*|transform\w*|shapeshift\w*|polymorph\w*|cursed?|spell|potion|enchant\w*|surger\w*|surgical\w*|operation|grew|grows?|growing|grown|shr(?:ink|inks|inking|ank|unk)\w*|enlarg\w*|resiz\w*|reshap\w*|magic\w*)\b/i;
+
+const ANATOMY_OVERRIDE_EVIDENCE = {
+    pussy: text =>
+        GROOMING_EVIDENCE.test(text) ||
+        TRANSFORMATION_EVIDENCE.test(text),
+    penis: text =>
+        TRANSFORMATION_EVIDENCE.test(text)
+};
+
+// Covering-removal detection. Small models routinely leave
+// the covering field "" (= unchanged) when the messages
+// clearly remove it, so removal is also detected in code.
+// Patterns are direction-aware: "pulls the blanket away"
+// and "the blanket is pulled away" count; "pulls the
+// blanket up over her" does not. Detection is item-aware:
+// only removal of the item actually covering the character
+// counts, so "he throws his jacket off" never clears a
+// blanket.
+const KNOWN_COVERING_ITEMS = [
+    "blanket", "covers", "cover", "duvet", "quilt",
+    "comforter", "bedsheet", "sheets", "sheet", "bedding",
+    "towel", "tarp", "tarpaulin", "cloak", "cape", "coat",
+    "jacket", "robe", "shawl", "poncho", "throw", "fur",
+    "pelt", "hide", "cloth", "fabric", "canvas", "curtain",
+    "drape", "rug", "sleeping bag", "afghan", "wrap"
+];
+
+// The alternation matches the item words present in the
+// stored covering value; when none are recognized (an
+// exotic covering), every known item word counts.
+function coveringItemAlternation(previousCovering) {
+
+    const value =
+        String(previousCovering || "").toLowerCase();
+
+    const present =
+        KNOWN_COVERING_ITEMS.filter(item =>
+            new RegExp(
+                `\\b${item.replace(/ /g, "\\s+")}s?\\b`
+            ).test(value)
+        );
+
+    const items = present.length
+        ? present
+        : KNOWN_COVERING_ITEMS;
+
+    return (
+        "(?:" +
+        items
+            .map(item => item.replace(/ /g, "\\s+"))
+            .join("|") +
+        ")s?"
+    );
+
+}
+
+function buildCoveringRemovalPatterns(item) {
+    return [
+
+        // Active: "<verb> the blanket away/off/aside"
+        new RegExp(
+            "\\b(?:pulls?|pulled|pulling|pushes?|pushed|pushing|throws?|threw|thrown|tosses?|tossed|kicks?|kicked|yanks?|yanked|tugs?|tugged|whips?|whipped|slips?|slipped|slides?|slid|draws?|drew|drawn|casts?|flings?|flung|shoves?|shoved|sweeps?|swept|drags?|dragged|peels?|peeled|strips?|stripped|lifts?|lifted)\\s+(?:the\\s+|her\\s+|his\\s+|their\\s+|that\\s+|this\\s+)?" +
+            item +
+            "\\s+(?:away|off|aside)\\b",
+            "i"
+        ),
+
+        // Passive / intransitive: "the blanket is pulled
+        // away", "the blanket slips off", "the tarp falls
+        // away"
+        new RegExp(
+            "\\b" + item +
+            "\\s+(?:is|was|being|gets?|got|has been|had been)?\\s*(?:pulled|pushed|thrown|tossed|kicked|yanked|tugged|whipped|slipped|slips?|slid|slides?|drawn|cast|flung|shoved|swept|dragged|peeled|stripped|removed|discarded|lifted|falls?|fell|comes?|came)\\s*(?:away|off|aside)\\b",
+            "i"
+        ),
+
+        // "removes/discards the blanket"
+        new RegExp(
+            "\\b(?:removes?|removed|removing|discards?|discarded|discarding)\\s+(?:the\\s+|her\\s+|his\\s+|their\\s+)?" +
+            item + "\\b",
+            "i"
+        )
+
+    ];
+}
+
+// A covering value that describes the removal event instead
+// of a covering ("Blanket thrown off") means uncovered.
+const COVERING_VALUE_IS_REMOVAL =
+    /\b(?:pulled|thrown|tossed|kicked|pushed|yanked|whipped|flung|shoved|swept|dragged|stripped|slipped|fell|fallen)\s*(?:away|off|aside)\b|\b(?:removed|discarded|gone)\b/i;
+
+function messagesRemoveCovering(
+    messagesText,
+    previousCovering
+) {
+    return buildCoveringRemovalPatterns(
+        coveringItemAlternation(previousCovering)
+    ).some(pattern =>
+        pattern.test(messagesText)
+    );
+}
 
 const FACTS_DEFAULTS = {
     eyeColor: "Brown eyes",
@@ -336,42 +470,93 @@ function matchHeightBand(value, keywords) {
 
 }
 
-// speciesOverrides first, else defaults; zero or missing
-// band values fall through.
-function resolveHeightBaseline(
-    config,
-    species,
-    gender,
-    band
-) {
+// Picks the byAge entry for the character. An exact age
+// match wins; otherwise "nearest" takes the closest defined
+// age (ties round down) and "floor" takes the highest
+// defined age at or below the character's (or the lowest
+// entry when none is). Ages above the highest entry always
+// use the highest entry. Unparseable ages follow unknownAge:
+// "youngest" uses the lowest entry, "blank" skips the fill.
+function resolveAgeKey(result, config) {
 
-    if (species) {
+    const definedAges =
+        Object.keys(config.byAge ?? {})
+            .map(Number)
+            .filter(Number.isFinite)
+            .sort((a, b) => a - b);
 
-        const overrideKey =
-            Object.keys(
-                config.speciesOverrides ?? {}
-            ).find(
-                key =>
-                    key.toLowerCase() === species
-            );
+    if (!definedAges.length) {
+        return "";
+    }
 
-        const override =
-            overrideKey
-                ? config.speciesOverrides[overrideKey]
-                    ?.[gender]?.[band]
-                : 0;
+    const digits =
+        String(result.age?.value ?? "")
+            .replace(/\D+/g, "");
 
-        if (isFillableHeight(override)) {
-            return override;
+    if (!digits) {
+        return config.unknownAge === "youngest"
+            ? String(definedAges[0])
+            : "";
+    }
+
+    const age = Number(digits);
+
+    if (config.byAge[String(age)]) {
+        return String(age);
+    }
+
+    const highest =
+        definedAges[definedAges.length - 1];
+
+    if (age >= highest) {
+        return String(highest);
+    }
+
+    if (config.fallback === "floor") {
+
+        const floor =
+            [...definedAges]
+                .reverse()
+                .find(defined => defined <= age);
+
+        return String(
+            floor ?? definedAges[0]
+        );
+
+    }
+
+    let nearest = definedAges[0];
+
+    for (const defined of definedAges) {
+
+        // Strict comparison over the ascending list keeps
+        // the lower age on equidistant ties.
+        if (
+            Math.abs(defined - age) <
+            Math.abs(nearest - age)
+        ) {
+            nearest = defined;
         }
 
     }
 
-    const fallback =
-        config.defaults?.[gender]?.[band];
+    return String(nearest);
 
-    return isFillableHeight(fallback)
-        ? fallback
+}
+
+function resolveHeightBaseline(
+    config,
+    ageKey,
+    gender,
+    band
+) {
+
+    const value =
+        config.byAge?.[ageKey]
+            ?.[gender]?.[band];
+
+    return isFillableHeight(value)
+        ? value
         : 0;
 
 }
@@ -387,8 +572,7 @@ function applyHeightFill(
 
     if (
         !height ||
-        !config ||
-        isUnderage(result)
+        !config
     ) {
         return;
     }
@@ -427,15 +611,17 @@ function applyHeightFill(
 
     }
 
-    const species =
-        String(
-            result.species?.value ?? ""
-        ).trim().toLowerCase();
+    const ageKey =
+        resolveAgeKey(result, config);
+
+    if (!ageKey) {
+        return;
+    }
 
     const baseline =
         resolveHeightBaseline(
             config,
-            species,
+            ageKey,
             gender,
             band
         );
@@ -623,8 +809,7 @@ export function postProcessFacts(
             result.age.value.replace(/\D+/g, "");
     }
 
-    // After the age strip so the underage check inside sees
-    // a clean numeric value.
+    // Resolve the age after stripping non-numeric text.
     applyHeightFill(
         result,
         resolvedGender,
@@ -642,7 +827,8 @@ export function postProcessState(
     state,
     {
         gender = "",
-        previousFacts = null
+        previousFacts = null,
+        messages = ""
     } = {}
 ) {
 
@@ -667,6 +853,84 @@ export function postProcessState(
 
     applyExpressionFlush(result);
 
+    // A populated override field permanently rewrites a
+    // stored fact, so a weak guess is worse than no value:
+    // drop anything below the explicit/strongly-implied bar.
+    for (const key of OVERRIDE_FIELDS) {
+
+        const field = result[key];
+
+        if (
+            field &&
+            field.value !== "" &&
+            field.confidence < OVERRIDE_MIN_CONFIDENCE
+        ) {
+            field.value = "";
+            field.confidence = 0;
+        }
+
+    }
+
+    const messagesText =
+        String(messages ?? "");
+
+    if (messagesText) {
+
+        for (
+            const [key, hasEvidence]
+            of Object.entries(ANATOMY_OVERRIDE_EVIDENCE)
+        ) {
+
+            const field = result[key];
+
+            if (
+                field &&
+                field.value !== "" &&
+                !hasEvidence(messagesText)
+            ) {
+                field.value = "";
+                field.confidence = 0;
+            }
+
+        }
+
+    }
+
+    if (result.covering) {
+
+        // A removal event is not a covering: normalize it.
+        if (
+            COVERING_VALUE_IS_REMOVAL.test(
+                result.covering.value
+            )
+        ) {
+            result.covering.value = "no covering";
+            result.covering.confidence = 75;
+        }
+
+        // The model said "unchanged" while the messages
+        // removed an active covering: force the removal.
+        const previousCovering =
+            String(
+                previousFacts?.covering?.value ?? ""
+            ).trim();
+
+        if (
+            result.covering.value === "" &&
+            previousCovering &&
+            !/^no\b/i.test(previousCovering) &&
+            messagesText &&
+            messagesRemoveCovering(
+                messagesText,
+                previousCovering
+            )
+        ) {
+            result.covering.value = "no covering";
+            result.covering.confidence = 75;
+        }
+
+    }
+
     for (
         const [key, defaultValue]
         of Object.entries(STATE_DEFAULTS)
@@ -674,7 +938,7 @@ export function postProcessState(
 
         const field = result[key];
 
-        if (!field || field.value !== "") {
+        if (!field) {
             continue;
         }
 
@@ -683,11 +947,57 @@ export function postProcessState(
                 previousFacts?.[key]?.value ?? ""
             ).trim();
 
-        // "" with a stored previous value means unchanged;
-        // only a truly blank field gets the default.
-        if (!previousValue) {
-            field.value = defaultValue;
-            field.confidence = 25;
+        const usualValue =
+            String(
+                previousFacts?.[
+                    USUAL_OUTFIT_SOURCES[key]
+                ]?.value ?? ""
+            ).trim();
+
+        const fillValue =
+            usualValue || defaultValue;
+
+        if (field.value === "") {
+
+            // "" with a stored previous value means unchanged;
+            // only a truly blank field gets the default —
+            // the character's usual outfit when known,
+            // otherwise the generic default.
+            if (!previousValue) {
+                field.value = fillValue;
+                field.confidence = 25;
+            }
+
+            continue;
+
+        }
+
+        // The extraction sometimes echoes a default at guess
+        // confidence even though the previous state holds a
+        // real value (e.g. "white shirt" re-dressing a
+        // character stored as "no shirt"). A default is only
+        // ever a stand-in for "nothing known", so it must
+        // never displace known state. The same applies to an
+        // echoed usual-outfit garment: wearing it must come
+        // from the messages, not from the wardrobe record.
+        const echoed =
+            field.value.toLowerCase() ===
+                defaultValue.toLowerCase() ||
+            (
+                usualValue &&
+                field.value.toLowerCase() ===
+                    usualValue.toLowerCase()
+            );
+
+        if (
+            previousValue &&
+            field.confidence <= 25 &&
+            echoed &&
+            previousValue.toLowerCase() !==
+                field.value.toLowerCase()
+        ) {
+            field.value = "";
+            field.confidence = 0;
         }
 
     }

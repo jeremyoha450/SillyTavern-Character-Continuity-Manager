@@ -1,7 +1,7 @@
 // scripts/ui/automation.js
 
 import {
-    updateCharacter
+    updateScopedCharacter
 } from "../database.js";
 
 import {
@@ -110,7 +110,8 @@ export function renderAutomation(
 
 export function bindAutomationEvents(
     id,
-    char
+    char,
+    groupId = ""
 ) {
 
     const autoState =
@@ -194,7 +195,7 @@ export function bindAutomationEvents(
 
     function saveAutomationSettings() {
 
-        updateCharacter(
+        updateScopedCharacter(
             id,
             {
                 settings: {
@@ -226,7 +227,8 @@ export function bindAutomationEvents(
                             autoKnowledgeMessages.value
                         )
                 }
-            }
+            },
+            groupId
         );
     }
 

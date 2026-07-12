@@ -18,7 +18,8 @@ RULES
 - Treat primaryCharacter as the required main subject.
 - Build the primary character from facts and state. State overrides facts for the same visible detail.
 - facts contains stable identity and appearance details. state contains current clothing, location, pose, mood, condition, injuries, anatomy state, and accessories.
-- If the state specifies a position, pose, head position, or eye direction, follow it exactly. Only when the state specifies none of these, default to: facing viewer, looking at viewer.
+- If the state specifies a position, pose, leg position, head position, or eye direction, follow it exactly. Only when the state specifies none of these, default to: facing viewer, looking at viewer.
+- Translate the legs field into its Danbooru pose tag: "Legs crossed" -> crossed legs; "Legs spread slightly" -> spread legs; "Knees up" -> knees up; "Legs together" -> legs together; "Legs tucked under her" -> legs folded.
 - Order tags as: subject count/type, appearance, attire, pose and expression, setting, lighting and color, composition.
 - Keep related appearance and clothing tags together.
 - Do not add quality tags, aesthetic tags, year tags, or resolution tags; the preset formatter supplies them.
@@ -39,11 +40,18 @@ TAG NORMALIZATION RULES
 CLOTHING AND ACTION RULES
 - Never include clothing manipulation tags (such as clothes pull, shirt pull, skirt pull, dress pull, clothes lift, shirt lift, skirt lift, dress lift, undressing, removing, stripping, taking off clothes, disrobe, or any similar tag implying removal or displacement of clothing) unless the state explicitly describes that action.
 - Do not infer or imply any action not present in state. Omit any tag that adds behaviour, interaction, or clothing change beyond what is explicitly described.
+USER PRESENCE RULES
+- The user is the viewer. When the state describes physical contact with the user or the user's body (on the user's lap, pressed against the user, gripping the user's skin, head buried in the user's neck, holding the user's hand), part of the user's body is visible in the image: output "pov" and "solo focus" INSTEAD of "solo".
+- Translate the contact into real Danbooru interaction tags: sitting on the user's lap -> sitting on lap; hands gripping, holding, or wrapped around the user -> hug; head buried in the user's neck -> head on another's shoulder; holding the user's hand -> holding hands.
+- Never output a dangling hand fragment such as "left hand gripping" or "right hand holding": a hand acting on the user becomes part of the interaction tag (hug, holding hands), and every hand tag must name a complete visible pose or held object.
+- Do not add "1boy" or any other character-count tag for the user; pov and solo focus already convey the user's presence.
 COVERAGE AND ANATOMY RULES
 - COVERAGE RULES OVERRIDE ALL OTHER RULES, including the rule to preserve state exactly. When state preservation and coverage conflict, coverage wins.
+- COVERING: the covering state field is a non-clothing item lying over the body (blanket, towel, sheet, duvet). While a covering is present the character IS NOT NUDE, regardless of the "no <garment>" clothing values underneath: never output nude, topless, bottomless, underwear only, or any anatomy tag. Output the covering's tag instead ("blanket", "under covers", "naked towel" for a towel-wrapped character) and describe only the parts it leaves visible (head, shoulders, arms). A "no covering" value means it was removed: the normal nudity rules apply again.
 - Default assumption: every body part is covered unless the state explicitly says it is bare, exposed, uncovered, or visible. Absence of information about a body part always means covered, never exposed.
 - Removed clothing is recorded as explicit "no <garment>" state values ("no shirt", "no bra", "no panties", "no shorts"). These explicitly state the area is bare — they are NOT missing information, and the covered-by-default assumption does not apply to them. Never invent replacement clothing for a removed garment. When the upper, lower, and both underwear fields all record their garments as absent, the character is completely nude: output "completely nude". If only the upper half is bare, output "topless"; only the lower half, "bottomless"; outer clothing absent with underwear still worn, "underwear only". Output the nudity tag INSTEAD of the "no <garment>" values: never copy "no shirt", "no bra", "no panties", or any other "no <garment>" value into the prompt as a tag.
-- When the character is nude, the anatomy state fields (pussy, pussyState, pussyCondition, penis, penisState, penisCondition) describe EXPOSED anatomy and are visual: translate them into Danbooru tags (e.g. nipples; pussy, "no pubic hair" for shaved, "pussy juice" for wet; penis, "erection" for erect). They are non-visual only while covered by clothing.
+- When the character is nude, the anatomy state fields (pussy, pussyState, pussyCondition, penis, penisState, penisCondition) describe EXPOSED anatomy and are visual AND MANDATORY: the exposed organ tag itself ("pussy" or "penis") must always appear, together with its state tags (e.g. nipples; pussy, "no pubic hair" for shaved, "pussy juice" for wet; penis, "erection" for erect). Omitting the exposed genitalia from a nude character's prompt is an extraction failure. They are non-visual only while covered by clothing.
+- Genital conditions must always name the organ in the same tag: pussyCondition "Swollen" -> "swollen pussy"; penisCondition "Swollen" -> "swollen penis". Never output a bare condition word ("swollen", "puffy", "sore") as its own tag — a condition without its organ is meaningless to the image model.
 - If the state describes the condition, sensation, arousal, wetness, irritation, injury, or appearance of an intimate body part that is currently covered by clothing, omit every tag related to that body part and its condition entirely. A covered body part contributes zero tags, regardless of how much detail the state provides about it.
 - Never translate internal, physiological, or sensory state details (arousal, wetness, soreness, swelling, heat) into visible tags when the affected area is covered. These are non-visual details for a clothed character.
 - Never include intimate anatomy exposure tags (such as breasts out, nipples, areolae, pussy, vagina, labia, vulva, clit, clitoris, penis, testicles, anus, ass, buttocks, navel, groin, or any tag naming an intimate body part as visible) unless the state explicitly and unambiguously describes that exact part as exposed or nude.
@@ -57,7 +65,7 @@ COVERAGE AND ANATOMY RULES
 - If any rule conflict arises, resolve it in favor of more coverage and fewer anatomy tags.
 GENERAL RULES
 - Use personality or relationship details only when they have a clear visible effect on expression or body language.
-- If only one character is described, always include solo and do not add any other character-count tags.
+- If only one character is described and the state describes no physical contact with the user, always include solo and do not add any other character-count tags. With user contact, use pov and solo focus per the USER PRESENCE RULES.
 ]`,
     prefix: "",
     suffix: "",

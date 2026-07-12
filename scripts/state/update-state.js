@@ -1,8 +1,8 @@
 // scripts/state/update-state.js
 
 import {
-    getCharacter,
-    updateCharacter
+    getScopedCharacter,
+    updateScopedCharacter
 } from "../database.js";
 
 import {
@@ -25,13 +25,14 @@ import {
 } from "../extraction/post-process.js";
 
 import {
-    isUnderage
-} from "../extraction/age-guard.js";
+    reconcilePostureTransition
+} from "./reconcile-transition.js";
 
 // Momentary fields that must always be re-derived from the
 // new messages. They are stripped from the baseline sent to
 // the LLM, never from the stored state itself.
 const TRANSIENT_FIELDS = new Set([
+    "legs",
     "leftHand",
     "rightHand",
     "headPosition",
@@ -74,6 +75,22 @@ function buildStateBaseline(facts) {
         .filter(Boolean)
         .join("; ");
 
+    const usualOutfit = [
+        "usualUpper",
+        "usualLower",
+        "usualFootwear"
+    ]
+        .map(value)
+        .filter(Boolean)
+        .join("; ");
+
+    // "no covering" means uncovered — showing it in the
+    // baseline would read as an active covering.
+    const covering =
+        /^no\b/i.test(value("covering"))
+            ? ""
+            : value("covering");
+
     const place = [
         "location",
         "area"
@@ -106,6 +123,14 @@ function buildStateBaseline(facts) {
 
         wearing
             ? `Previously wearing: ${wearing}.`
+            : "",
+
+        usualOutfit
+            ? `Usual outfit (wardrobe preference, NOT currently worn): ${usualOutfit}.`
+            : "",
+
+        covering
+            ? `Covered by: ${covering}.`
             : "",
 
         place
@@ -158,12 +183,14 @@ function buildStateBaseline(facts) {
 
 export async function updateCharacterStateData(
     id,
-    messages
+    messages,
+    groupId = ""
 ) {
 
     const character =
-        getCharacter(
-            id
+        getScopedCharacter(
+            id,
+            groupId
         );
 
     if (!character) {
@@ -171,18 +198,6 @@ export async function updateCharacterStateData(
         throw new Error(
             "Character not found."
         );
-
-    }
-
-    if (isUnderage(character.facts)) {
-
-        return {
-
-            changed: false,
-            changes: [],
-            blocked: "age"
-
-        };
 
     }
 
@@ -274,14 +289,22 @@ export async function updateCharacterStateData(
                 gender:
                     currentFacts.gender?.value,
                 previousFacts:
-                    currentFacts
+                    currentFacts,
+                messages
             }
+        );
+
+    const reconciledState =
+        reconcilePostureTransition(
+            currentFacts,
+            state,
+            character.locks
         );
 
     const mergedState =
         mergeData(
             currentFacts,
-            state,
+            reconciledState,
             character.locks
         );
 
@@ -332,9 +355,10 @@ export async function updateCharacterStateData(
 
     }
 
-    updateCharacter(
+    updateScopedCharacter(
         id,
-        update
+        update,
+        groupId
     );
 
     return {

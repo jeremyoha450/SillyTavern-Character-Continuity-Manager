@@ -5,6 +5,8 @@ import {
     migrateAISettings
 } from "./migrations.js";
 
+import { debugLog } from "./debug-logger.js";
+
 const NAMESPACE =
     "characterContinuityManager";
 
@@ -56,18 +58,52 @@ function saveServerStore() {
     return true;
 }
 
+export function getStorageStatus() {
+    const context = getContext();
+    const extensionSettings =
+        context?.extensionSettings ||
+        context?.extension_settings;
+    if (extensionSettings && typeof context?.saveSettingsDebounced === "function") {
+        return {
+            available: true,
+            mode: "SillyTavern extension settings"
+        };
+    }
+
+    try {
+        if (globalThis.localStorage) {
+            return {
+                available: true,
+                mode: "Browser local-storage fallback"
+            };
+        }
+    } catch {
+        // Report unavailable below.
+    }
+
+    return {
+        available: false,
+        mode: "Unavailable"
+    };
+}
+
 function readLegacy(key) {
 
     try {
-        return JSON.parse(
-            localStorage.getItem(key) ||
-            "null"
-        );
+        return JSON.parse(readBrowserItem(key) || "null");
     } catch (error) {
         console.error(
             `[CCM] Failed To Read Legacy Storage '${key}'`,
             error
         );
+        return null;
+    }
+}
+
+function readBrowserItem(key) {
+    try {
+        return globalThis.localStorage?.getItem(key) ?? null;
+    } catch {
         return null;
     }
 }
@@ -122,6 +158,11 @@ export function loadDatabase() {
             );
         }
 
+        debugLog("storage", "database.loaded", {
+            operation: "load",
+            source: "sillytavern",
+            status: "success"
+        });
         return database;
     }
 
@@ -143,6 +184,11 @@ export function loadDatabase() {
         }
     }
 
+    debugLog("storage", "database.loaded", {
+        operation: "load",
+        source: store ? "legacy-import" : "browser-fallback",
+        status: "success"
+    });
     return database;
 }
 
@@ -161,17 +207,25 @@ export function saveDatabase(database) {
             removeLegacy(
                 LEGACY_DATABASE_KEY
             );
-            console.log(
-                "[CCM] Database Saved To SillyTavern"
-            );
+            debugLog("storage", "database.saved", {
+                operation: "save",
+                source: "sillytavern",
+                status: "success"
+            });
             return true;
         }
     }
 
-    return writeBrowserFallback(
+    const saved = writeBrowserFallback(
         LEGACY_DATABASE_KEY,
         migrated
     );
+    debugLog("storage", "database.saved", {
+        operation: "save",
+        source: "browser-fallback",
+        status: saved ? "success" : "failed"
+    });
+    return saved;
 }
 
 export function loadAISettings() {
@@ -231,9 +285,6 @@ export function saveAISettings(settings) {
             removeLegacy(
                 LEGACY_AI_SETTINGS_KEY
             );
-            console.log(
-                "[CCM] AI Settings Saved To SillyTavern"
-            );
             return true;
         }
     }
@@ -265,8 +316,7 @@ export function loadUIState(
     const legacyKey =
         `ccm-section-${characterId}-${key}`;
 
-    const legacy =
-        localStorage.getItem(legacyKey);
+    const legacy = readBrowserItem(legacyKey);
 
     const open =
         legacy !== "closed";

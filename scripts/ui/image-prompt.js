@@ -49,10 +49,12 @@ const STATE_FIELDS = new Set([
     "footwear",
     "underwearTop",
     "underwearBottom",
+    "covering",
     "location",
     "position",
     "area",
     "positionDetail",
+    "legs",
     "leftHand",
     "rightHand",
     "headPosition",
@@ -73,7 +75,14 @@ const STATE_FIELDS = new Set([
 
 const EXCLUDED_FIELDS = new Set([
     "characterName",
-    "notes"
+    "notes",
+    // Wardrobe preference, not what is currently worn: the
+    // state clothing fields are the only clothing source for
+    // an image of the current moment. Sending the usual
+    // outfit re-dresses nude characters in the prompt.
+    "usualUpper",
+    "usualLower",
+    "usualFootwear"
 ]);
 
 function getCurrentContinuity(

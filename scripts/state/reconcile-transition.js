@@ -42,6 +42,30 @@ export function reconcilePostureTransition(
         };
     }
 
+    // Legs follow the same lifecycle as positionDetail: a
+    // posture change or a standing-incompatible pose makes
+    // the stored leg pose stale.
+    const incomingLegs =
+        String(result.legs?.value || "").trim();
+    const storedLegs =
+        String(previous.legs?.value || "").trim();
+
+    const clearLegs = incomingLegs
+        ? conflictsWithPosition(incomingLegs)
+        : Boolean(storedLegs) &&
+          (
+              (newPosition && newPosition !== oldPosition) ||
+              conflictsWithPosition(storedLegs)
+          );
+
+    if (!locks.legs && clearLegs) {
+        result.legs = {
+            value: "",
+            confidence: 0,
+            clear: true
+        };
+    }
+
     const oldArea = String(previous.area?.value || "").trim();
     const newArea = String(result.area?.value || "").trim();
 

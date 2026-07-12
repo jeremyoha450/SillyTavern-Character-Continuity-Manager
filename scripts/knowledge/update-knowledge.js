@@ -1,11 +1,8 @@
 // scripts/knowledge/update-knowledge.js
 
 import {
-    getCharacter
-} from "../database.js";
-
-import {
-    updateCharacter
+    getScopedCharacter,
+    updateScopedCharacter
 } from "../database.js";
 
 import {
@@ -14,12 +11,14 @@ import {
 
 export async function updateCharacterKnowledge(
     characterId,
-    conversation
+    conversation,
+    groupId = ""
 ) {
 
     const character =
-        getCharacter(
-            characterId
+        getScopedCharacter(
+            characterId,
+            groupId
         );
 
     if (!character) {
@@ -114,11 +113,12 @@ export async function updateCharacterKnowledge(
                 }
             );
 
-        updateCharacter(
+        updateScopedCharacter(
             characterId,
             {
                 knowledge
-            }
+            },
+            groupId
         );
 
         return {

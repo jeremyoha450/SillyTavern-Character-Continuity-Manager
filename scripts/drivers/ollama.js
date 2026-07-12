@@ -6,6 +6,7 @@ import {
     readJsonResponse,
     sendOpenAIChat
 } from "./openai-transport.js";
+import { fetchWithTimeout } from "./request.js";
 
 function getRoot(endpoint) {
 
@@ -51,7 +52,7 @@ const ollamaDriver = {
         }
 
         const response =
-            await fetch(
+            await fetchWithTimeout(
                 `${root}/api/tags`,
                 {
                     headers:

@@ -9,9 +9,6 @@ export async function extractFacts(
     metadata = {}
 ) {
 
-    console.log(
-        "[CCM] Provider Manager: Facts"
-    );
 
     return await execute(
         "facts",
@@ -25,9 +22,6 @@ export async function extractState(
     metadata = {}
 ) {
 
-    console.log(
-        "[CCM] Provider Manager: State"
-    );
 
     return await execute(
         "state",
@@ -42,9 +36,6 @@ export async function updateKnowledge(
     metadata = {}
 ) {
 
-    console.log(
-        "[CCM] Provider Manager: Knowledge Update"
-    );
 
     return await execute(
         "knowledge-update",
@@ -63,9 +54,6 @@ export async function extractKnowledge(
     metadata = {}
 ) {
 
-    console.log(
-        "[CCM] Provider Manager: Knowledge"
-    );
 
     return await execute(
         "knowledge",
@@ -79,9 +67,6 @@ export async function generateImagePrompt(
     metadata = {}
 ) {
 
-    console.log(
-        "[CCM] Provider Manager: Image Prompt"
-    );
 
     return await execute(
         "image-prompt",

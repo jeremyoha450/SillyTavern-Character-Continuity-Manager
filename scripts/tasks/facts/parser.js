@@ -3,6 +3,8 @@
 import schema
 from "./schema.js";
 
+import { debugLog } from "../../debug-logger.js";
+
 const FLAT_VALUE_CONFIDENCE = 50;
 
 // Models sometimes return literal quote marks (e.g. "''")
@@ -125,12 +127,9 @@ export function parse(
     text
 ) {
 
-    console.log(
-        "[CCM] Parsing Facts"
-    );
 
     if (typeof text !== "string") {
-        return structuredClone(schema);
+        throw new Error("Facts response was not text.");
     }
 
     const cleaned =
@@ -156,6 +155,11 @@ export function parse(
                 "[CCM] Repaired malformed Facts JSON",
                 firstError
             );
+            debugLog("facts", "response.repaired", {
+                operation: "parse",
+                status: "repaired",
+                errorType: firstError?.name || "Error"
+            });
 
             return normalizeFacts(data);
 
@@ -165,8 +169,16 @@ export function parse(
                 "[CCM] Failed To Parse Facts",
                 error
             );
+            debugLog("facts", "response.parse-failed", {
+                operation: "parse",
+                status: "failed",
+                errorType: error?.name || "Error"
+            });
 
-            return structuredClone(schema);
+            throw new Error(
+                "Facts response was not valid JSON.",
+                { cause: error }
+            );
 
         }
 

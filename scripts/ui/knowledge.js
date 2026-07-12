@@ -1,8 +1,8 @@
 // scripts/ui/knowledge.js
 
 import {
-    getCharacter,
-    updateCharacter
+    getScopedCharacter,
+    updateScopedCharacter
 } from "../database.js";
 
 import {
@@ -21,7 +21,10 @@ import {
     escapeHtml
 } from "./escape.js";
 
-export function addKnowledge(id) {
+export function addKnowledge(
+    id,
+    groupId = ""
+) {
 
     const text =
         prompt("Enter knowledge:");
@@ -31,7 +34,10 @@ export function addKnowledge(id) {
     }
 
     const char =
-        getCharacter(id);
+        getScopedCharacter(
+            id,
+            groupId
+        );
 
     if (!char) {
         return;
@@ -64,22 +70,25 @@ export function addKnowledge(id) {
 
     });
 
-    updateCharacter(
+    updateScopedCharacter(
         id,
         {
             knowledge
-        }
+        },
+        groupId
     );
 
     renderCharacterDashboard(
-        id
+        id,
+        groupId
     );
 
 }
 
 export function deleteKnowledge(
     characterId,
-    knowledgeId
+    knowledgeId,
+    groupId = ""
 ) {
 
     if (
@@ -91,8 +100,9 @@ export function deleteKnowledge(
     }
 
     const char =
-        getCharacter(
-            characterId
+        getScopedCharacter(
+            characterId,
+            groupId
         );
 
     if (!char) {
@@ -106,27 +116,31 @@ export function deleteKnowledge(
                     item.id !== knowledgeId
             );
 
-    updateCharacter(
+    updateScopedCharacter(
         characterId,
         {
             knowledge
-        }
+        },
+        groupId
     );
 
     renderCharacterDashboard(
-        characterId
+        characterId,
+        groupId
     );
 
 }
 
 export function editKnowledge(
     characterId,
-    knowledgeId
+    knowledgeId,
+    groupId = ""
 ) {
 
     const char =
-        getCharacter(
-            characterId
+        getScopedCharacter(
+            characterId,
+            groupId
         );
 
     if (!char) {
@@ -164,15 +178,17 @@ export function editKnowledge(
     item.updatedAt =
         Date.now();
 
-    updateCharacter(
+    updateScopedCharacter(
         characterId,
         {
             knowledge
-        }
+        },
+        groupId
     );
 
     renderCharacterDashboard(
-        characterId
+        characterId,
+        groupId
     );
 
 }
@@ -236,14 +252,18 @@ export function renderKnowledge(
 }
 
 export function bindKnowledgeEvents(
-    id
+    id,
+    groupId = ""
 ) {
 
     document
         .getElementById("ccm-add-knowledge")
         ?.addEventListener(
             "click",
-            () => addKnowledge(id)
+            () => addKnowledge(
+                id,
+                groupId
+            )
         );
 
     document
@@ -253,7 +273,8 @@ export function bindKnowledgeEvents(
                 "click",
                 () => deleteKnowledge(
                     id,
-                    button.dataset.id
+                    button.dataset.id,
+                    groupId
                 )
             );
         });
@@ -265,7 +286,8 @@ export function bindKnowledgeEvents(
                 "click",
                 () => editKnowledge(
                     id,
-                    button.dataset.id
+                    button.dataset.id,
+                    groupId
                 )
             );
         });

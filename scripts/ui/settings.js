@@ -5,12 +5,15 @@ import {
 } from "../ai/registry.js";
 
 import {
+    getAISource,
+    setAISource,
     getCurrentDriverId,
     setCurrentDriverId,
     getDriverSettings,
     setDriverSettings,
     getImageGenerationSettings,
     setImageGenerationSettings,
+    getAllImagePromptPresetSettings,
     getImagePromptPresetSettings,
     setImagePromptPresetSettings,
     resetImagePromptPreset,
@@ -22,6 +25,24 @@ import {
 import {
     getImagePromptPresets
 } from "../tasks/image/presets/registry.js";
+
+import {
+    DEBUG_CATEGORIES,
+    clearDebugEntries,
+    debugLog,
+    setDebugSettings
+} from "../debug-logger.js";
+
+import { bindHealthPanel } from "./settings-health.js";
+import { bindDebugPanel } from "./settings-debug.js";
+import { bindTrainingDataPanel } from "./settings-training.js";
+import { setTrainingDataSettings } from "../training-data.js";
+
+import {
+    createCustomPreset,
+    createPresetExport,
+    validateImportedPreset
+} from "../image-preset-transfer.js";
 
 function escapeHtml(value) {
 
@@ -257,6 +278,12 @@ function renderProviderFields(
 
 export function openSettings() {
 
+    // This event contains no setting values; it only helps diagnose UI flow.
+    debugLog("ui", "settings.opened", {
+        operation: "open",
+        status: "success"
+    });
+
     document
         .getElementById("ccm-settings-dialog")
         ?.remove();
@@ -264,8 +291,11 @@ export function openSettings() {
     const drivers =
         getDrivers();
 
-    const imagePresets =
-        getImagePromptPresets();
+    let imagePresets =
+        getAllImagePromptPresetSettings();
+    const builtInPresetIds = new Set(
+        getImagePromptPresets().map(preset => preset.id)
+    );
 
     const dialog =
         document.createElement("div");
@@ -295,9 +325,45 @@ export function openSettings() {
                     role="tab"
                     aria-selected="false"
                 >Image Generation</button>
+                <button
+                    class="ccm-settings-tab"
+                    data-tab="debug"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                >Debug / Logging</button>
+                <button
+                    class="ccm-settings-tab"
+                    data-tab="training"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                >Training Data</button>
+                <button
+                    class="ccm-settings-tab"
+                    data-tab="health"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
+                >Health</button>
             </div>
 
             <div class="ccm-settings-tab-panel" data-panel="provider">
+                <label class="ccm-settings-field">
+                    ${renderHelpLabel(
+                        "Global AI Source",
+                        "Choose CCM's separately configured provider or SillyTavern's currently active model. Routine State and Knowledge updates are frequent: a dedicated 7B–9B model is recommended, 4B is the practical minimum, and models below 4B are not recommended for reliable JSON."
+                    )}
+                    <select id="ccm-settings-ai-source">
+                        <option value="ccm">CCM Provider (Recommended for routine updates)</option>
+                        <option value="sillytavern">SillyTavern Active Model</option>
+                    </select>
+                </label>
+
+                <p class="ccm-ai-source-note">
+                    State and Knowledge automation can make many requests. Use a separate smaller CCM model when possible: 4B minimum, 7B–9B recommended. Reserve a larger SillyTavern model for detailed creation or difficult extraction.
+                </p>
+
                 <label class="ccm-settings-field">
                     ${renderHelpLabel(
                         "Default AI Provider",
@@ -455,6 +521,190 @@ export function openSettings() {
                         <button id="ccm-preset-restore" type="button">Restore This Preset</button>
                         <button id="ccm-preset-restore-all" type="button">Restore All Presets</button>
                     </div>
+                    <div class="ccm-preset-transfer-actions">
+                        <button id="ccm-preset-export" type="button">Export Selected Preset</button>
+                        <button id="ccm-preset-import" type="button">Import Preset JSON</button>
+                        <input id="ccm-preset-import-file" type="file" accept="application/json,.json" hidden>
+                        <span id="ccm-preset-transfer-status" aria-live="polite"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="ccm-settings-tab-panel"
+                data-panel="debug"
+                hidden
+            >
+                <div class="ccm-debug-privacy-note">
+                    <strong>Local and private by design</strong>
+                    <p>Debug logging is off by default. Logs stay in this browser on this SillyTavern device and are never sent anywhere by CCM. Standard logging excludes prompts, AI responses, character names, chat text, endpoints, headers, API keys and credentials.</p>
+                </div>
+
+                <details class="ccm-debug-report-help" open>
+                    <summary>How to capture a useful problem report</summary>
+                    <ol>
+                        <li>Enable local debug logging.</li>
+                        <li>Select the area where the problem occurs, or select <strong>Log all areas</strong> if you are unsure.</li>
+                        <li>For AI generation, parsing, or incorrect-output problems, enable <strong>Include AI inputs and outputs</strong>. This may record private character or chat content.</li>
+                        <li>Click <strong>Save Settings</strong>, then reproduce the problem.</li>
+                        <li>Return here and click <strong>Download Log</strong>. Send that JSON file when asking for support.</li>
+                    </ol>
+                    <p><strong>Important:</strong> Logging is not retroactive. CCM cannot recover an event, AI request, or AI response that occurred while logging was disabled. Standard logging usually identifies where a failure happened; AI input/output capture is often needed to explain exactly why the model or parser failed. Visual layout problems may also require a screenshot.</p>
+                </details>
+
+                <label class="ccm-settings-checkbox">
+                    <input id="ccm-debug-enabled" type="checkbox">
+                    ${renderHelpLabel(
+                        "Enable local debug logging",
+                        "Records small structured diagnostic events locally. No prompt, response, chat, character or credential content is recorded."
+                    )}
+                </label>
+
+                <label class="ccm-settings-checkbox">
+                    <input id="ccm-debug-all" type="checkbox">
+                    ${renderHelpLabel(
+                        "Log all areas",
+                        "Enables every diagnostic category. Individual category choices are ignored while this is selected."
+                    )}
+                </label>
+
+                <div class="ccm-debug-sensitive-option">
+                    <label class="ccm-settings-checkbox">
+                        <input id="ccm-debug-ai-content" type="checkbox">
+                        ${renderHelpLabel(
+                            "Include AI inputs and outputs",
+                            "Stores the prompts/messages sent to the AI and its returned output in the local log. This may include private character and chat content."
+                        )}
+                    </label>
+                    <p><strong>Privacy warning:</strong> This can record character details, scenario text, chat excerpts, prompts, and generated responses. Content stays local and is limited to 20,000 characters per input/output. Recognizable API keys, authorization values, and secret tokens are redacted. Leave this off unless diagnosing an AI problem.</p>
+                </div>
+
+                <fieldset class="ccm-debug-categories">
+                    <legend>Debug areas</legend>
+                    ${DEBUG_CATEGORIES.map(([id, label]) => `
+                        <label class="ccm-settings-checkbox">
+                            <input type="checkbox" data-debug-category="${escapeAttribute(id)}">
+                            ${escapeHtml(label)}
+                        </label>
+                    `).join("")}
+                </fieldset>
+
+                <div class="ccm-debug-options">
+                    <label class="ccm-settings-field">
+                        ${renderHelpLabel(
+                            "Maximum saved entries",
+                            "Older entries are automatically removed. Choose between 50 and 1000 entries."
+                        )}
+                        <input id="ccm-debug-max-entries" type="number" min="50" max="1000" step="50">
+                    </label>
+                    <label class="ccm-settings-checkbox">
+                        <input id="ccm-debug-console" type="checkbox">
+                        ${renderHelpLabel(
+                            "Also show events in browser console",
+                            "Mirrors the same privacy-safe structured events to the browser developer console."
+                        )}
+                    </label>
+                </div>
+
+                <label class="ccm-settings-field">
+                    ${renderHelpLabel(
+                        "Local diagnostic log",
+                        "Newest entries appear first. The viewer contains the same privacy-safe information copied or downloaded below."
+                    )}
+                    <textarea id="ccm-debug-log-viewer" rows="12" readonly></textarea>
+                </label>
+                <div class="ccm-debug-log-actions">
+                    <button id="ccm-debug-refresh" type="button">Refresh</button>
+                    <button id="ccm-debug-copy" type="button">Copy Log</button>
+                    <button id="ccm-debug-download" type="button">Download Log</button>
+                    <button id="ccm-debug-clear" type="button">Clear Log</button>
+                    <span id="ccm-debug-action-status" aria-live="polite"></span>
+                </div>
+
+                <div class="ccm-developer-mode-block">
+                    <label class="ccm-settings-checkbox">
+                        <input id="ccm-debug-developer-mode" type="checkbox">
+                    ${renderHelpLabel(
+                        "Developer Mode",
+                        "Shows advanced troubleshooting tools for CCM development and support. Normal users should leave this off."
+                    )}
+                </label>
+                <p class="ccm-settings-help">
+                        Developer Mode is intended for focused diagnostics and request inspection. It can reveal technical metadata and may later expose private AI context only after explicit warnings.
+                    </p>
+                </div>
+
+                <div
+                    id="ccm-developer-tools"
+                    class="ccm-developer-tools"
+                    hidden
+                >
+                    <div class="ccm-debug-privacy-note">
+                        <strong>Advanced developer tools</strong>
+                        <p>Developer Mode is enabled. Advanced tools will appear here only when they are working and safe to use. No inactive placeholder buttons are shown.</p>
+                    </div>
+
+                    <div class="ccm-debug-report-help">
+                        <strong>Current Developer Mode scope</strong>
+                        <ul>
+                            <li>Database Inspector: read-only counts and schema/storage summaries.</li>
+                            <li>AI Context Viewer: captured request context and parser results when available.</li>
+                            <li>Safe Debug Bundle: safe health, usage, request, retry, and log metadata export.</li>
+                            <li>Advanced Health and request diagnostics/statistics.</li>
+                        </ul>
+                        <p><strong>Deferred:</strong> AI Benchmark and Recovery Tools are not active UI features.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div
+                class="ccm-settings-tab-panel"
+                data-panel="training"
+                hidden
+            >
+                <div class="ccm-debug-privacy-note">
+                    <strong>Training Data Collection is off by default</strong>
+                    <p>This is for building high-quality examples for a future CCM specialist model. If enabled, CCM stores the exact AI input messages, raw AI responses, parsed outputs, failures, and retry counts for supported AI tasks.</p>
+                    <p><strong>Privacy warning:</strong> records may include private character details, scenarios, roleplay/chat text, image prompts, and generated card content. CCM redacts recognizable API keys, headers, and bearer tokens, but you should review exports before sharing them.</p>
+                </div>
+
+                <label class="ccm-settings-checkbox">
+                    <input id="ccm-training-enabled" type="checkbox">
+                    ${renderHelpLabel(
+                        "Enable Training Data Collection",
+                        "Explicit opt-in. When enabled, CCM stores AI training examples locally for supported tasks. This may include private character and chat content."
+                    )}
+                </label>
+
+                <label class="ccm-settings-field">
+                    ${renderHelpLabel(
+                        "Maximum saved records",
+                        "Older training examples are automatically removed. Choose between 10 and 2000 records."
+                    )}
+                    <input id="ccm-training-max-records" type="number" min="10" max="2000" step="10">
+                </label>
+
+                <p class="ccm-settings-help">
+                    Collected records: <strong id="ccm-training-count">0</strong>
+                </p>
+
+                <div class="ccm-debug-log-actions">
+                    <button id="ccm-training-refresh" type="button">Refresh Count</button>
+                    <button id="ccm-training-export" type="button">Export Training Data JSON</button>
+                    <button id="ccm-training-clear" type="button">Clear Training Data</button>
+                    <span id="ccm-training-action-status" aria-live="polite"></span>
+                </div>
+            </div>
+
+            <div
+                class="ccm-settings-tab-panel"
+                data-panel="health"
+                hidden
+            >
+                <p class="ccm-settings-help">Compatibility and configuration information only. API keys, credentials, prompts, and character/chat content are never shown here.</p>
+                <div id="ccm-health-summary" class="ccm-health-summary" aria-live="polite">Loading health information…</div>
+                <div class="ccm-health-actions">
+                    <button id="ccm-health-refresh" type="button">Refresh Health</button>
                 </div>
             </div>
 
@@ -481,6 +731,12 @@ export function openSettings() {
     const providerSelect =
         dialog.querySelector("#ccm-settings-provider");
 
+    const aiSourceSelect =
+        dialog.querySelector("#ccm-settings-ai-source");
+
+    aiSourceSelect.value =
+        getAISource();
+
     const fieldsContainer =
         dialog.querySelector(
             "#ccm-settings-provider-fields"
@@ -494,6 +750,10 @@ export function openSettings() {
     imagePresetSelect.value =
         getImageGenerationSettings()
             .preset || "";
+
+    const debugPanel = bindDebugPanel(dialog);
+    const trainingPanel = bindTrainingDataPanel(dialog);
+    bindHealthPanel(dialog);
 
     const editPresetSelect =
         dialog.querySelector(
@@ -544,6 +804,32 @@ export function openSettings() {
             "#ccm-preset-restore"
         );
 
+    const exportPresetButton = dialog.querySelector("#ccm-preset-export");
+    const importPresetButton = dialog.querySelector("#ccm-preset-import");
+    const importPresetFile = dialog.querySelector("#ccm-preset-import-file");
+    const transferStatus = dialog.querySelector("#ccm-preset-transfer-status");
+
+    const presetOptions = (includeNone = false) =>
+        `${includeNone ? '<option value="">None</option>' : '<option value="">Select preset</option>'}` +
+        imagePresets.map(preset => `
+            <option value="${escapeAttribute(preset.id)}">
+                ${escapeHtml(preset.label)}${preset.custom ? " (Custom)" : ""}
+            </option>
+        `).join("");
+
+    const refreshPresetDropdowns = () => {
+        const defaultValue = imagePresetSelect.value;
+        const editValue = editingPresetId;
+        imagePresetSelect.innerHTML = presetOptions(true);
+        editPresetSelect.innerHTML = presetOptions(false);
+        imagePresetSelect.value = presetDrafts[defaultValue] ? defaultValue : "";
+        editPresetSelect.value = presetDrafts[editValue] ? editValue : "";
+    };
+
+    const setTransferStatus = message => {
+        transferStatus.textContent = message;
+    };
+
     const clearPresetEditor = () => {
         for (const field of presetEditorFields) {
             if (field.type === "checkbox") {
@@ -571,7 +857,8 @@ export function openSettings() {
             field.disabled = false;
         }
 
-        restorePresetButton.disabled = false;
+        restorePresetButton.disabled = !builtInPresetIds.has(id);
+        exportPresetButton.disabled = false;
 
         dialog.querySelector(
             "#ccm-preset-mode"
@@ -680,6 +967,71 @@ export function openSettings() {
     renderPresetEditor(
         editingPresetId
     );
+
+    exportPresetButton.addEventListener("click", () => {
+        capturePresetEditor();
+        const id = editingPresetId || imagePresetSelect.value;
+        const preset = presetDrafts[id];
+        if (!preset) {
+            setTransferStatus("Select a preset to export.");
+            return;
+        }
+        const blob = new Blob(
+            [JSON.stringify(createPresetExport(preset), null, 2)],
+            { type: "application/json" }
+        );
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement("a");
+        link.href = url;
+        link.download = `ccm-image-preset-${preset.id}.json`;
+        link.click();
+        URL.revokeObjectURL(url);
+        setTransferStatus(`Exported ${preset.label}.`);
+    });
+
+    importPresetButton.addEventListener("click", () => importPresetFile.click());
+    importPresetFile.addEventListener("change", async () => {
+        const file = importPresetFile.files?.[0];
+        importPresetFile.value = "";
+        if (!file) return;
+        try {
+            const imported = validateImportedPreset(JSON.parse(await file.text()));
+            const existing = presetDrafts[imported.id];
+            let preset;
+            if (existing && confirm(`A preset named '${existing.label}' already uses this ID. Overwrite its saved settings?`)) {
+                preset = {
+                    ...imported,
+                    id: existing.id,
+                    label: existing.label,
+                    custom: !builtInPresetIds.has(existing.id)
+                };
+            } else {
+                const requestedName = prompt(
+                    "Save imported preset as:",
+                    existing ? `${imported.label} (Imported)` : imported.label
+                );
+                if (requestedName === null) return;
+                preset = createCustomPreset(
+                    imported,
+                    requestedName,
+                    Object.keys(presetDrafts)
+                );
+            }
+
+            setImagePromptPresetSettings(preset.id, preset);
+            saveSettings();
+            presetDrafts[preset.id] = getImagePromptPresetSettings(preset.id);
+            imagePresets = Object.values(presetDrafts)
+                .sort((a, b) => a.label.localeCompare(b.label));
+            editingPresetId = preset.id;
+            refreshPresetDropdowns();
+            editPresetSelect.value = preset.id;
+            renderPresetEditor(preset.id);
+            setTransferStatus(`Imported ${preset.label}.`);
+        } catch (error) {
+            setTransferStatus(error.message || "Preset import failed.");
+        }
+    });
 
     editPresetSelect.addEventListener(
         "change",
@@ -846,8 +1198,26 @@ export function openSettings() {
 
                 resetSettings();
 
+                setDebugSettings({
+                    enabled: false,
+                    categories: [],
+                    allCategories: false,
+                    includeAIContent: false,
+                    developerMode: false,
+                    mirrorToConsole: false,
+                    maxEntries: 250
+                });
+                clearDebugEntries();
+                setTrainingDataSettings({
+                    enabled: false,
+                    maxRecords: 100
+                });
+
                 providerSelect.value =
                     getCurrentDriverId();
+
+                aiSourceSelect.value =
+                    getAISource();
 
                 renderProviderFields(
                     fieldsContainer,
@@ -869,6 +1239,11 @@ export function openSettings() {
                 renderPresetEditor(
                     editingPresetId
                 );
+
+                debugPanel.renderSettings();
+                debugPanel.renderLog();
+                trainingPanel.renderSettings();
+                trainingPanel.renderCount();
 
                 const status =
                     dialog.querySelector(
@@ -917,6 +1292,10 @@ export function openSettings() {
 
                 setCurrentDriverId(driverId);
 
+                setAISource(
+                    aiSourceSelect.value
+                );
+
                 if (driverId) {
                     setDriverSettings(
                         driverId,
@@ -928,6 +1307,9 @@ export function openSettings() {
                     preset:
                         imagePresetSelect.value
                 });
+
+                setDebugSettings(debugPanel.getValues());
+                setTrainingDataSettings(trainingPanel.getValues());
 
                 const saved =
                     saveSettings();

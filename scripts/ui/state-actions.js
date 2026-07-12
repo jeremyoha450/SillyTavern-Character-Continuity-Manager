@@ -2,7 +2,9 @@
 
 import {
     getCharacter,
+    getScopedCharacter,
     updateCharacter,
+    updateScopedCharacter,
     saveDatabase
 } from "../database.js";
 
@@ -34,10 +36,6 @@ import {
 } from "../extraction/post-process.js";
 
 import {
-    UNDERAGE_MESSAGE
-} from "../extraction/age-guard.js";
-
-import {
     getHeightConfig
 } from "../config/height-defaults.js";
 
@@ -51,13 +49,48 @@ import {
     renderCharacterDashboard
 } from "../ui.js";
 
-export async function updateCharacterState(
-    id
+import {
+    formatChatMessages,
+    isCharacterInCurrentContext,
+    targetCharacterConversation
+} from "../group-context.js";
+
+function recordNoChangeHistory(
+    id,
+    groupId,
+    type,
+    message
 ) {
 
-    console.log(
-        "[CCM] Update State button clicked"
+    const character =
+        getScopedCharacter(
+            id,
+            groupId
+        );
+
+    if (!character) return;
+
+    const history =
+        addHistory(
+            character,
+            type,
+            [],
+            { message }
+        );
+
+    updateScopedCharacter(
+        id,
+        { history },
+        groupId
     );
+
+}
+
+export async function updateCharacterState(
+    id,
+    groupId = ""
+) {
+
 
     showCCMStatus(`
         <div style="font-size:52px;">
@@ -76,8 +109,9 @@ export async function updateCharacterState(
     try {
 
         const character =
-            getCharacter(
-                id
+            getScopedCharacter(
+                id,
+                groupId
             );
 
         if (!character) {
@@ -92,67 +126,63 @@ export async function updateCharacterState(
         const ctx =
             SillyTavern.getContext();
 
-        const messages =
-            ctx.chat
-                .slice(-10)
-                .map(
-                    x =>
-                        `${x.is_user ? "User" : "Assistant"}:\n${x.mes}`
-                )
-                .join("\n\n");
+        if (
+            !isCharacterInCurrentContext(
+                ctx,
+                character
+            )
+        ) {
+            showCCMError(
+                "Open a chat or group containing this character first."
+            );
+            return;
+        }
 
-        console.log(
-            "[CCM] Messages",
-            messages
-        );
+        const messages =
+            targetCharacterConversation(
+                character,
+                formatChatMessages(
+                    ctx.chat.slice(-10)
+                )
+            );
+
 
         const result =
 			await updateCharacterStateData(
 				id,
-				messages
+				messages,
+				groupId
 			);
-
-		if (result.blocked === "age") {
-
-			showCCMError(
-				UNDERAGE_MESSAGE
-			);
-
-			renderCharacterDashboard(
-				id
-			);
-
-			return;
-		}
 
 		if (!result.changed) {
 
-			console.log(
-				"[CCM] No State Changes"
-			);
+            recordNoChangeHistory(
+                id,
+                groupId,
+                "state",
+                "Manual state update checked the recent chat. No state changes were found."
+            );
 
 			showCCMSuccess(
 				"No state changes found"
 			);
 
 			renderCharacterDashboard(
-				id
+				id,
+                groupId
 			);
 
 			return;
 		}
 
-		console.log(
-			"[CCM] State Updated",
-			result.changes
-		);
 
 		showCCMSuccess(
 			"Current state updated"
 		);
 
 		renderCharacterDashboard(
-			id
+			id,
+            groupId
 		);
 
     } catch (error) {
@@ -163,7 +193,9 @@ export async function updateCharacterState(
         );
 
         showCCMError(
-            "Failed to update current state."
+            "Failed to update current state.",
+            error,
+            "Manual state update"
         );
 
     }
@@ -171,7 +203,8 @@ export async function updateCharacterState(
 }
 
 export async function reExtractCharacter(
-    id
+    id,
+    groupId = ""
 ) {
 
     showCCMStatus(`
@@ -193,10 +226,18 @@ export async function reExtractCharacter(
         const ctx =
             SillyTavern.getContext();
 
+        const currentCharacter =
+            getScopedCharacter(
+                id,
+                groupId
+            );
+
         const character =
-            ctx?.characters?.[
-                ctx.characterId
-            ];
+            ctx?.characters?.find(candidate =>
+                currentCharacter?.avatar && candidate?.avatar
+                    ? currentCharacter.avatar === candidate.avatar
+                    : currentCharacter?.name === candidate?.name
+            );
 
         if (!character) {
 
@@ -206,11 +247,6 @@ export async function reExtractCharacter(
 
             return;
         }
-
-        const currentCharacter =
-			getCharacter(
-				id
-			);
 
 		const facts =
 			postProcessFacts(
@@ -302,26 +338,31 @@ export async function reExtractCharacter(
 					?.characterName
 			)
 		) {
-			updateCharacter(
+			updateScopedCharacter(
 				id,
 				{
 					locks: updatedLocks
-				}
+				},
+				groupId
 			);
 		}
 
 		if (!mergedFacts.changed) {
 
-			console.log(
-				"[CCM] No Fact Changes"
-			);
+            recordNoChangeHistory(
+                id,
+                groupId,
+                "facts",
+                "Manual facts re-extraction completed. No fact changes were found."
+            );
 
 			showCCMSuccess(
 				"No fact changes found"
 			);
 
 			renderCharacterDashboard(
-				id
+				id,
+                groupId
 			);
 
 			return;
@@ -334,7 +375,7 @@ export async function reExtractCharacter(
 				mergedFacts.changes
 			);
 
-		updateCharacter(
+		updateScopedCharacter(
 			id,
 			{
 				facts:
@@ -344,24 +385,23 @@ export async function reExtractCharacter(
 					updatedLocks,
 
 				history
-			}
+			},
+			groupId
 		);
 
 		renderCharacterDashboard(
-			id
+			id,
+            groupId
 		);
 
-        console.log(
-            "[CCM] Started Manual ReExtract",
-            facts
-        );
 
         showCCMSuccess(
             "Facts re-extracted"
         );
 
 		renderCharacterDashboard(
-			id
+			id,
+            groupId
 		);
 
     } catch (error) {
@@ -372,7 +412,9 @@ export async function reExtractCharacter(
         );
 
         showCCMError(
-            "Failed to re-extract facts."
+            "Failed to re-extract facts.",
+            error,
+            "Fact re-extraction"
         );
 
     }
@@ -381,12 +423,10 @@ export async function reExtractCharacter(
 
 
 export async function updateCharacterKnowledge(
-    id
+    id,
+    groupId = ""
 ) {
 
-    console.log(
-        "[CCM] Update Knowledge button clicked"
-    );
 
     showCCMStatus(`
         <div style="font-size:52px;">
@@ -407,29 +447,56 @@ export async function updateCharacterKnowledge(
         const ctx =
             SillyTavern.getContext();
 
+        const character =
+            getScopedCharacter(
+                id,
+                groupId
+            );
+
+        if (
+            !character ||
+            !isCharacterInCurrentContext(
+                ctx,
+                character
+            )
+        ) {
+            showCCMError(
+                "Open a chat or group containing this character first."
+            );
+            return;
+        }
+
         const messages =
-            ctx.chat
-                .slice(-30)
-                .map(
-                    x =>
-                        `${x.is_user ? "User" : "Assistant"}:\n${x.mes}`
+            targetCharacterConversation(
+                character,
+                formatChatMessages(
+                    ctx.chat.slice(-30)
                 )
-                .join("\n\n");
+            );
 
         const result =
 			await runKnowledgeUpdate(
 				id,
-				messages
+				messages,
+				groupId
 			);
 
         if (!result.changed) {
+
+            recordNoChangeHistory(
+                id,
+                groupId,
+                "knowledge",
+                "Manual knowledge update checked the recent chat. No knowledge changes were found."
+            );
 
             showCCMSuccess(
                 "No knowledge changes found"
             );
 
             renderCharacterDashboard(
-                id
+                id,
+                groupId
             );
 
             return;
@@ -440,7 +507,8 @@ export async function updateCharacterKnowledge(
         );
 
         renderCharacterDashboard(
-            id
+            id,
+            groupId
         );
 
     } catch (error) {
@@ -451,7 +519,9 @@ export async function updateCharacterKnowledge(
         );
 
         showCCMError(
-            "Failed to update knowledge."
+            "Failed to update knowledge.",
+            error,
+            "Manual knowledge update"
         );
 
     }
@@ -459,7 +529,8 @@ export async function updateCharacterKnowledge(
 }
 
 export function changeCharacterImage(
-    id
+    id,
+    groupId = ""
 ) {
 
     const input =
@@ -493,7 +564,8 @@ export function changeCharacterImage(
             );
 
             renderCharacterDashboard(
-                id
+                id,
+                groupId
             );
 
         };
@@ -509,7 +581,8 @@ export function changeCharacterImage(
 }
 
 export function removeCharacterImage(
-    id
+    id,
+    groupId = ""
 ) {
 
     updateCharacter(
@@ -520,7 +593,8 @@ export function removeCharacterImage(
     );
 
     renderCharacterDashboard(
-        id
+        id,
+        groupId
     );
 
 }

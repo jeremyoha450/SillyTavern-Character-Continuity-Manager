@@ -16,6 +16,8 @@ import {
 
 const defaults = {
 
+    aiSource: "ccm",
+
     driver: "",
 
     drivers: {},
@@ -47,7 +49,8 @@ function loadSettings() {
             : {};
 
     const presets =
-        Object.fromEntries(
+        {
+            ...Object.fromEntries(
             Object.entries(builtInPresets)
                 .map(([id, preset]) => [
                     id,
@@ -55,10 +58,20 @@ function loadSettings() {
                         ? structuredClone(savedPresets[id])
                         : preset
                 ])
-        );
+            ),
+            ...Object.fromEntries(
+                Object.entries(savedPresets)
+                    .filter(([id]) => !(id in builtInPresets))
+                    .map(([id, preset]) => [id, structuredClone(preset)])
+            )
+        };
 
     return {
         version: saved.version,
+        aiSource:
+            saved.aiSource === "sillytavern"
+                ? "sillytavern"
+                : "ccm",
         driver:
             typeof saved.driver === "string"
                 ? saved.driver
@@ -98,6 +111,9 @@ export function resetSettings() {
     settings.driver =
         reset.driver;
 
+    settings.aiSource =
+        reset.aiSource;
+
     settings.drivers =
         reset.drivers;
 
@@ -105,12 +121,6 @@ export function resetSettings() {
         reset.imageGeneration;
 
     return saveSettings();
-}
-
-export function getSettings() {
-
-    return settings;
-
 }
 
 export function getCurrentDriverId() {
@@ -123,6 +133,16 @@ export function setCurrentDriverId(id) {
 
     settings.driver = id;
 
+}
+
+export function getAISource() {
+    return settings.aiSource || "ccm";
+}
+
+export function setAISource(source) {
+    settings.aiSource = source === "sillytavern"
+        ? "sillytavern"
+        : "ccm";
 }
 
 export function getImageGenerationSettings() {
@@ -181,12 +201,11 @@ export function setImagePromptPresetSettings(
     const builtIn =
         getBuiltInImagePromptPreset(id);
 
-    if (!builtIn) return;
-
     settings.imageGeneration.presets[id] = {
         ...structuredClone(preset),
-        id: builtIn.id,
-        label: builtIn.label
+        id: builtIn?.id || id,
+        label: builtIn?.label || preset.label || id,
+        custom: !builtIn
     };
 
 }
@@ -203,10 +222,21 @@ export function resetImagePromptPreset(id) {
 }
 
 export function resetAllImagePromptPresets() {
+    const custom = Object.fromEntries(
+        Object.entries(settings.imageGeneration.presets)
+            .filter(([id]) => !getBuiltInImagePromptPreset(id))
+    );
+    settings.imageGeneration.presets = {
+        ...getBuiltInImagePromptPresetMap(),
+        ...custom
+    };
 
-    settings.imageGeneration.presets =
-        getBuiltInImagePromptPresetMap();
+}
 
+export function getAllImagePromptPresetSettings() {
+    return Object.values(settings.imageGeneration.presets)
+        .map(preset => structuredClone(preset))
+        .sort((a, b) => String(a.label).localeCompare(String(b.label)));
 }
 
 export function setDriverSettings(

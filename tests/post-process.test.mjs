@@ -465,3 +465,546 @@ test(
 
     }
 );
+
+// --- Default echo guard ---
+
+test(
+    "drops an echoed clothing default that would re-dress a naked character",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("white shirt", 25),
+                lower: field("Blue short", 25)
+            },
+            {
+                previousFacts: {
+                    upper: field("no shirt", 100),
+                    lower: field("no pants", 100)
+                }
+            }
+        );
+
+        assert.equal(result.upper.value, "");
+        assert.equal(result.upper.confidence, 0);
+        assert.equal(result.lower.value, "");
+        assert.equal(result.lower.confidence, 0);
+
+    }
+);
+
+test(
+    "keeps a default-looking value when stated at real confidence",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("white shirt", 100)
+            },
+            {
+                previousFacts: {
+                    upper: field("no shirt", 100)
+                }
+            }
+        );
+
+        assert.equal(
+            result.upper.value,
+            "white shirt"
+        );
+        assert.equal(
+            result.upper.confidence,
+            100
+        );
+
+    }
+);
+
+test(
+    "keeps the echoed default when the previous value was the same default",
+    () => {
+
+        const result = postProcessState(
+            {
+                area: field("Bedroom", 25)
+            },
+            {
+                previousFacts: {
+                    area: field("Bedroom", 25)
+                }
+            }
+        );
+
+        assert.equal(
+            result.area.value,
+            "Bedroom"
+        );
+
+    }
+);
+
+test(
+    "still fills defaults on a first extraction with no previous value",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("", 0)
+            },
+            {
+                previousFacts: {
+                    upper: field("", 0)
+                }
+            }
+        );
+
+        assert.equal(
+            result.upper.value,
+            "white shirt"
+        );
+        assert.equal(
+            result.upper.confidence,
+            25
+        );
+
+    }
+);
+
+test(
+    "guarded default does not overwrite a real stored location",
+    () => {
+
+        const result = postProcessState(
+            {
+                location: field("House", 25)
+            },
+            {
+                previousFacts: {
+                    location: field("Forest", 100)
+                }
+            }
+        );
+
+        assert.equal(result.location.value, "");
+        assert.equal(result.location.confidence, 0);
+
+    }
+);
+
+// --- Usual outfit defaults ---
+
+test(
+    "fills a blank clothing field from the usual outfit instead of the generic default",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("", 0),
+                lower: field("", 0),
+                footwear: field("", 0)
+            },
+            {
+                previousFacts: {
+                    upper: field("", 0),
+                    lower: field("", 0),
+                    footwear: field("", 0),
+                    usualUpper: field("thin blue shirt", 100),
+                    usualLower: field("denim shorts", 100)
+                }
+            }
+        );
+
+        assert.equal(
+            result.upper.value,
+            "thin blue shirt"
+        );
+        assert.equal(result.upper.confidence, 25);
+        assert.equal(
+            result.lower.value,
+            "denim shorts"
+        );
+
+        // No usualFootwear on record: generic default.
+        assert.equal(
+            result.footwear.value,
+            "barefoot"
+        );
+
+    }
+);
+
+test(
+    "an echoed usual-outfit garment at guess confidence cannot re-dress a naked character",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("thin blue shirt", 25)
+            },
+            {
+                previousFacts: {
+                    upper: field("no shirt", 100),
+                    usualUpper: field("thin blue shirt", 100)
+                }
+            }
+        );
+
+        assert.equal(result.upper.value, "");
+        assert.equal(result.upper.confidence, 0);
+
+    }
+);
+
+test(
+    "a usual-outfit garment stated at real confidence is kept (she got dressed)",
+    () => {
+
+        const result = postProcessState(
+            {
+                upper: field("thin blue shirt", 50)
+            },
+            {
+                previousFacts: {
+                    upper: field("no shirt", 100),
+                    usualUpper: field("thin blue shirt", 100)
+                }
+            }
+        );
+
+        assert.equal(
+            result.upper.value,
+            "thin blue shirt"
+        );
+        assert.equal(
+            result.upper.confidence,
+            50
+        );
+
+    }
+);
+
+// --- Override confidence guard ---
+
+test(
+    "drops a weak-guess override so it cannot rewrite a stored fact",
+    () => {
+
+        const result = postProcessState({
+            pussy: field("Natural", 50),
+            hairColor: field("blonde hair", 25)
+        });
+
+        assert.equal(result.pussy.value, "");
+        assert.equal(result.pussy.confidence, 0);
+        assert.equal(result.hairColor.value, "");
+        assert.equal(result.hairColor.confidence, 0);
+
+    }
+);
+
+test(
+    "keeps an override stated at explicit or strongly implied confidence",
+    () => {
+
+        const result = postProcessState({
+            hairColor: field("blonde hair", 100),
+            relationship: field("Girlfriend", 75)
+        });
+
+        assert.equal(
+            result.hairColor.value,
+            "blonde hair"
+        );
+        assert.equal(
+            result.relationship.value,
+            "Girlfriend"
+        );
+
+    }
+);
+
+// --- Grooming corroboration guard ---
+
+test("a pussy override without grooming evidence in the messages is dropped even at confidence 100", () => {
+
+    const result = postProcessState(
+        {
+            pussy: field("Natural", 100)
+        },
+        {
+            gender: "female",
+            messages:
+                "She melts into his embrace, aftershocks running through her."
+        }
+    );
+
+    assert.equal(result.pussy.value, "");
+    assert.equal(result.pussy.confidence, 0);
+
+});
+
+test("a pussy override with grooming evidence in the messages is kept", () => {
+
+    const result = postProcessState(
+        {
+            pussy: field("Natural", 100)
+        },
+        {
+            gender: "female",
+            messages:
+                "She decided to stop shaving weeks ago and let the hair grow back."
+        }
+    );
+
+    assert.equal(result.pussy.value, "Natural");
+    assert.equal(result.pussy.confidence, 100);
+
+});
+
+test("the grooming guard does not run when no messages are supplied", () => {
+
+    const result = postProcessState(
+        {
+            pussy: field("Shaved", 100)
+        },
+        { gender: "female" }
+    );
+
+    assert.equal(result.pussy.value, "Shaved");
+
+});
+
+// --- Covering removal detection ---
+
+test("a blank covering is forced to 'no covering' when the messages remove it", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            gender: "female",
+            previousFacts: {
+                covering: field(
+                    "Blanket covering her up to the shoulders",
+                    100
+                )
+            },
+            messages:
+                "As the blanket is pulled away, she shivers at the sudden cold."
+        }
+    );
+
+    assert.equal(result.covering.value, "no covering");
+    assert.equal(result.covering.confidence, 75);
+
+});
+
+test("active-voice removal is detected too", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field("Blanket covering her body", 100)
+            },
+            messages:
+                "He gently pulls the blanket away and sets it on the floor."
+        }
+    );
+
+    assert.equal(result.covering.value, "no covering");
+
+});
+
+test("pulling the blanket up over her keeps the covering", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field("Blanket covering her body", 100)
+            },
+            messages:
+                "She pulls the blanket up over her shoulders to fend off the cold."
+        }
+    );
+
+    assert.equal(result.covering.value, "");
+    assert.equal(result.covering.confidence, 0);
+
+});
+
+test("a removal-event description in the covering value is normalized", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("Blanket thrown off", 100)
+        },
+        {}
+    );
+
+    assert.equal(result.covering.value, "no covering");
+
+});
+
+test("no previous covering means removal words in messages change nothing", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field("", 0)
+            },
+            messages:
+                "He throws the blanket off the bed to make room."
+        }
+    );
+
+    assert.equal(result.covering.value, "");
+
+});
+
+// --- Anatomy override corroboration, both genders ---
+
+test("a penis override without change evidence is dropped even at confidence 100", () => {
+
+    const result = postProcessState(
+        {
+            penis: field("Large size", 100)
+        },
+        {
+            gender: "male",
+            messages:
+                "He leans back on the couch, catching his breath."
+        }
+    );
+
+    assert.equal(result.penis.value, "");
+    assert.equal(result.penis.confidence, 0);
+
+});
+
+test("a penis override with transformation evidence is kept", () => {
+
+    const result = postProcessState(
+        {
+            penis: field("Large size", 100)
+        },
+        {
+            gender: "male",
+            messages:
+                "The potion takes hold and his body grows before her eyes."
+        }
+    );
+
+    assert.equal(result.penis.value, "Large size");
+
+});
+
+test("a pussy override with transformation evidence is kept even without grooming words", () => {
+
+    const result = postProcessState(
+        {
+            pussy: field("Natural", 100)
+        },
+        {
+            gender: "female",
+            messages:
+                "The spell transforms her body completely."
+        }
+    );
+
+    assert.equal(result.pussy.value, "Natural");
+
+});
+
+test("the anatomy guards apply per-field when gender is unspecified", () => {
+
+    const result = postProcessState(
+        {
+            pussy: field("Natural", 100),
+            penis: field("Average size", 100)
+        },
+        {
+            messages:
+                "They settle into the blankets, breathing slowly."
+        }
+    );
+
+    assert.equal(result.pussy.value, "");
+    assert.equal(result.penis.value, "");
+
+});
+
+// --- Item-aware covering removal ---
+
+test("tarp removal is detected like any other covering", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field("Tarp covering her body", 100)
+            },
+            messages:
+                "He drags the tarp off her and tosses it into the corner."
+        }
+    );
+
+    assert.equal(result.covering.value, "no covering");
+
+});
+
+test("removing a different item does not clear the covering", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field(
+                    "Blanket covering her up to the shoulders",
+                    100
+                )
+            },
+            messages:
+                "He throws his jacket off and sits down beside her."
+        }
+    );
+
+    assert.equal(result.covering.value, "");
+    assert.equal(result.covering.confidence, 0);
+
+});
+
+test("a canvas covering matches its own item word in the removal", () => {
+
+    const result = postProcessState(
+        {
+            covering: field("", 0)
+        },
+        {
+            previousFacts: {
+                covering: field(
+                    "A large piece of canvas draped over her",
+                    100
+                )
+            },
+            messages:
+                "The canvas is pulled away by the wind."
+        }
+    );
+
+    assert.equal(result.covering.value, "no covering");
+
+});

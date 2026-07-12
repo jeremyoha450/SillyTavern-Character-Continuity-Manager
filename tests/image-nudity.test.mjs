@@ -273,3 +273,342 @@ test("the backstop appends a sentence in natural-language mode", () => {
         "an anime-style digital illustration of a young woman standing on a rug. The character is completely nude."
     );
 });
+
+// --- Organ-qualified condition tags ---
+
+test("a swollen pussyCondition on a nude character adds swollen pussy, not bare swollen", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo focus, pov, sitting on lap" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyState: "Wet",
+            pussyCondition: "Swollen"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /\bswollen pussy\b/);
+    assert.doesNotMatch(
+        result.positive,
+        /\bswollen,/
+    );
+});
+
+test("swollen pussy is not duplicated when the prompt already contains it", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "completely nude, nipples, pussy, no pubic hair, pussy juice, swollen pussy, 1girl"
+        },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyState: "Wet",
+            pussyCondition: "Swollen"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive.match(/swollen pussy/g).length,
+        1
+    );
+});
+
+test("natural language mode folds the swollen condition into the anatomy sentence", () => {
+    const result = applyNudityBackstop(
+        { positive: "She sits on her partner's lap, completely nude." },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            pussy: "Shaved",
+            pussyCondition: "Swollen"
+        },
+        nlPreset
+    );
+
+    assert.match(result.positive, /swollen smooth shaved pussy/);
+});
+
+test("a swollen penisCondition on a nude male adds swollen penis", () => {
+    const result = applyNudityBackstop(
+        { positive: "1boy, solo" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no singlet",
+            underwearBottom: "no underwear",
+            penis: "Average size",
+            penisState: "Erect",
+            penisCondition: "Swollen"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /\bswollen penis\b/);
+});
+
+test("no condition tag is added while the character is clothed", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, white shirt, blue shorts" },
+        {
+            upper: "white shirt",
+            lower: "blue shorts",
+            pussyCondition: "Swollen"
+        },
+        tagPreset
+    );
+
+    assert.doesNotMatch(result.positive, /swollen/);
+});
+
+// --- Covering suspends nudity ---
+
+test("an active covering suppresses all nudity and anatomy injection", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, lying on back, on the couch, blanket, under covers" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders",
+            pussy: "Shaved",
+            pussyState: "Wet",
+            pussyCondition: "Swollen"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "1girl, solo, lying on back, on the couch, blanket, under covers"
+    );
+});
+
+test("a removed covering restores the nudity backstop", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, lying on back, on the couch" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "no covering",
+            pussy: "Shaved"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /completely nude/);
+    assert.match(result.positive, /\bpussy\b/);
+});
+
+test("a covering also suppresses nudity sentences in natural language mode", () => {
+    const result = applyNudityBackstop(
+        { positive: "She rests on the couch under a blanket, eyes closed." },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her body",
+            pussy: "Shaved"
+        },
+        nlPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "She rests on the couch under a blanket, eyes closed."
+    );
+});
+
+// --- Covered nudity echo stripping ---
+
+test("an echoed nudity tag is stripped while a covering is active", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "1girl, solo, petite body, lying on back, lying on couch, completely nude, blanket covering up to the shoulders, detailed background"
+        },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "1girl, solo, petite body, lying on back, lying on couch, blanket covering up to the shoulders, detailed background, under covers"
+    );
+});
+
+test("echoed anatomy tags are stripped while covered", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "1girl, solo, nipples, pussy, no pubic hair, blanket, under covers, lying on couch"
+        },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her body",
+            pussy: "Shaved"
+        },
+        tagPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "1girl, solo, blanket, under covers, lying on couch"
+    );
+});
+
+test("covered stripping works on natural language prose", () => {
+    const result = applyNudityBackstop(
+        {
+            positive:
+                "She lies completely nude on the couch under a blanket pulled up to her shoulders, eyes closed."
+        },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders"
+        },
+        nlPreset
+    );
+
+    assert.equal(
+        result.positive,
+        "She lies on the couch under a blanket pulled up to her shoulders, eyes closed."
+    );
+});
+
+test("covered stripping leaves an uncovered prompt untouched", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, lying on couch" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "no covering"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /completely nude/);
+});
+
+// --- Covering reinforcement ---
+
+test("missing covering anchors are appended in tags mode", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, lying on back, lying on couch" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /\bblanket\b/);
+    assert.match(result.positive, /\bunder covers\b/);
+});
+
+test("exposure terms are appended to the preset negative while covered", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, blanket, under covers" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders"
+        },
+        {
+            mode: "tags",
+            negativePrompt: "worst quality, bad anatomy"
+        }
+    );
+
+    assert.match(
+        result.negative,
+        /^worst quality, bad anatomy, nude, /
+    );
+    assert.match(result.negative, /exposed torso/);
+    assert.match(result.negative, /blanket slipping/);
+});
+
+test("no negative is invented when the preset has none (Flux)", () => {
+    const result = applyNudityBackstop(
+        { positive: "She rests under a blanket on the couch." },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her body"
+        },
+        { mode: "natural-language" }
+    );
+
+    assert.equal(result.negative, undefined);
+});
+
+test("a towel covering anchors the towel tag, not under covers", () => {
+    const result = applyNudityBackstop(
+        { positive: "1girl, solo, standing, bathroom" },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Towel wrapped around her torso"
+        },
+        tagPreset
+    );
+
+    assert.match(result.positive, /\btowel\b/);
+    assert.doesNotMatch(result.positive, /under covers/);
+});
+
+test("prose without any covering word gets the covering sentence appended", () => {
+    const result = applyNudityBackstop(
+        { positive: "She rests peacefully on the couch, eyes closed." },
+        {
+            upper: "no shirt",
+            lower: "no pants",
+            underwearTop: "no bra",
+            underwearBottom: "no panties",
+            covering: "Blanket covering her up to the shoulders"
+        },
+        { mode: "natural-language", negativePrompt: "" }
+    );
+
+    assert.match(
+        result.positive,
+        /Blanket covering her up to the shoulders\.$/
+    );
+});

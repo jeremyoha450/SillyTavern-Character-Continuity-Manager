@@ -1,14 +1,60 @@
 {
-    "defaults": {
-        "female": { "short": 152, "average": 163, "tall": 172 },
-        "male": { "short": 165, "average": 176, "tall": 188 }
+    "byAge": {
+		"6": {
+			"female": { "short": 100, "average": 116, "tall": 132 },
+			"male": { "short": 101, "average": 117, "tall": 133 }
+		},
+		"7": {
+			"female": { "short": 105, "average": 122, "tall": 139 },
+			"male": { "short": 106, "average": 123, "tall": 140 }
+		},
+		"8": {
+			"female": { "short": 110, "average": 128, "tall": 146 },
+			"male": { "short": 111, "average": 128, "tall": 147 }
+		},
+		"9": {
+			"female": { "short": 115, "average": 133, "tall": 152 },
+			"male": { "short": 116, "average": 134, "tall": 153 }
+		},
+		"10": {
+			"female": { "short": 120, "average": 139, "tall": 160 },
+			"male": { "short": 120, "average": 139, "tall": 161 }
+		},
+		"11": {
+			"female": { "short": 124, "average": 145, "tall": 166 },
+			"male": { "short": 123, "average": 144, "tall": 167 }
+		},
+		"12": {
+			"female": { "short": 129, "average": 151, "tall": 173 },
+			"male": { "short": 128, "average": 150, "tall": 174 }
+		},
+		"13": {
+			"female": { "short": 134, "average": 156, "tall": 179 },
+			"male": { "short": 133, "average": 156, "tall": 183 }
+		},
+		"14": {
+			"female": { "short": 138, "average": 160, "tall": 184 },
+			"male": { "short": 140, "average": 163, "tall": 190 }
+		},
+		"15": {
+			"female": { "short": 141, "average": 162, "tall": 186 },
+			"male": { "short": 147, "average": 169, "tall": 195 }
+		},
+		"16": {
+			"female": { "short": 142, "average": 163, "tall": 187 },
+			"male": { "short": 154, "average": 173, "tall": 198 }
+		},
+		"17": {
+			"female": { "short": 143, "average": 163, "tall": 188 },
+			"male": { "short": 157, "average": 175, "tall": 199 }
+		},
+		"18": {
+			"female": { "short": 143, "average": 163, "tall": 188 },
+			"male": { "short": 158, "average": 176, "tall": 200 }
+		}
     },
-    "speciesOverrides": {
-        "example-species": {
-            "female": { "short": 0, "average": 0, "tall": 0 },
-            "male": { "short": 0, "average": 0, "tall": 0 }
-        }
-    },
+    "fallback": "nearest",
+    "unknownAge": "youngest",
     "varietyCm": 0,
     "format": "{cm} cm",
     "keywords": {

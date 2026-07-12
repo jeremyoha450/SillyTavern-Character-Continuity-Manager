@@ -7,23 +7,29 @@
 
 const BUILT_IN = Object.freeze({
 
-    defaults: Object.freeze({
+    byAge: Object.freeze({
 
-        female: Object.freeze({
-            short: 152,
-            average: 163,
-            tall: 172
-        }),
+        "18": Object.freeze({
 
-        male: Object.freeze({
-            short: 165,
-            average: 176,
-            tall: 188
+            female: Object.freeze({
+                short: 152,
+                average: 163,
+                tall: 172
+            }),
+
+            male: Object.freeze({
+                short: 165,
+                average: 176,
+                tall: 188
+            })
+
         })
 
     }),
 
-    speciesOverrides: Object.freeze({}),
+    fallback: "nearest",
+
+    unknownAge: "youngest",
 
     varietyCm: 0,
 
@@ -56,6 +62,11 @@ const HEIGHT_BANDS = [
 ];
 
 let cachedConfig = BUILT_IN;
+let configStatus = {
+    source: "built-in",
+    valid: true,
+    detail: "Built-in defaults active while configuration loads."
+};
 
 function isPlainObject(value) {
 
@@ -67,18 +78,13 @@ function isPlainObject(value) {
 
 }
 
-// A defaults band set must carry a positive number for all
-// three bands; an override band set may leave bands out or
-// zero them as inert placeholders that fall through to the
-// defaults at fill time.
-function isBandSet(entry, { requireAll }) {
+function isBandSet(entry) {
 
     if (!isPlainObject(entry)) {
         return false;
     }
 
     if (
-        requireAll &&
         !HEIGHT_BANDS.every(
             band => band in entry
         )
@@ -90,7 +96,7 @@ function isBandSet(entry, { requireAll }) {
         value =>
             typeof value === "number" &&
             Number.isFinite(value) &&
-            (requireAll ? value > 0 : value >= 0)
+            value > 0
     );
 
 }
@@ -117,17 +123,54 @@ export function validateHeightConfig(raw) {
     }
 
     const {
-        defaults,
-        speciesOverrides,
+        byAge,
+        fallback,
+        unknownAge,
         varietyCm,
         format,
         keywords
     } = raw;
 
+    if (!isPlainObject(byAge)) {
+        return null;
+    }
+
+    const entries =
+        Object.entries(byAge);
+
+    if (entries.length === 0) {
+        return null;
+    }
+
+    for (const [key, entry] of entries) {
+
+        if (
+            !/^\d+$/.test(key) ||
+            Number(key) <= 0
+        ) {
+            return null;
+        }
+
+        if (
+            !isPlainObject(entry) ||
+            !isBandSet(entry.female) ||
+            !isBandSet(entry.male)
+        ) {
+            return null;
+        }
+
+    }
+
     if (
-        !isPlainObject(defaults) ||
-        !isBandSet(defaults.female, { requireAll: true }) ||
-        !isBandSet(defaults.male, { requireAll: true })
+        fallback !== "nearest" &&
+        fallback !== "floor"
+    ) {
+        return null;
+    }
+
+    if (
+        unknownAge !== "youngest" &&
+        unknownAge !== "blank"
     ) {
         return null;
     }
@@ -155,44 +198,14 @@ export function validateHeightConfig(raw) {
         return null;
     }
 
-    const overrides =
-        speciesOverrides ?? {};
-
-    if (!isPlainObject(overrides)) {
-        return null;
-    }
-
-    for (
-        const species
-        of Object.values(overrides)
-    ) {
-
-        if (!isPlainObject(species)) {
-            return null;
-        }
-
-        for (
-            const bands
-            of Object.values(species)
-        ) {
-
-            if (
-                !isBandSet(bands, { requireAll: false })
-            ) {
-                return null;
-            }
-
-        }
-
-    }
-
     return {
 
-        defaults:
-            structuredClone(defaults),
+        byAge:
+            structuredClone(byAge),
 
-        speciesOverrides:
-            structuredClone(overrides),
+        fallback,
+
+        unknownAge,
 
         varietyCm,
 
@@ -209,6 +222,10 @@ export function validateHeightConfig(raw) {
 
 export function getHeightConfig() {
     return cachedConfig;
+}
+
+export function getHeightConfigStatus() {
+    return structuredClone(configStatus);
 }
 
 export async function loadHeightDefaults() {
@@ -241,12 +258,22 @@ export async function loadHeightDefaults() {
             );
 
             cachedConfig = BUILT_IN;
+            configStatus = {
+                source: "built-in",
+                valid: false,
+                detail: "Shipped configuration was malformed; built-in fallback is active."
+            };
 
             return cachedConfig;
 
         }
 
         cachedConfig = validated;
+        configStatus = {
+            source: "config/heightDefaults.json",
+            valid: true,
+            detail: "Shipped height configuration loaded and validated."
+        };
 
     } catch (error) {
 
@@ -256,6 +283,11 @@ export async function loadHeightDefaults() {
         );
 
         cachedConfig = BUILT_IN;
+        configStatus = {
+            source: "built-in",
+            valid: false,
+            detail: "Shipped configuration could not be loaded; built-in fallback is active."
+        };
 
     }
 

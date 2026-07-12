@@ -1,7 +1,7 @@
 // scripts/ui/dashboard.js
 
 import {
-    getCharacter,
+    getScopedCharacter,
     deleteCharacter,
     archiveCharacter,
     restoreCharacter
@@ -34,10 +34,18 @@ import {
     escapeHtml
 } from "./escape.js";
 
+import { debugLog } from "../debug-logger.js";
+
 export function renderCharacterDashboard(
     id,
-    actions
+    actions,
+    groupId = ""
 ) {
+
+    debugLog("dashboard", "dashboard.opened", {
+        operation: groupId ? "open-group-character" : "open-character",
+        status: "started"
+    });
 
     const container =
         document.getElementById(
@@ -47,9 +55,15 @@ export function renderCharacterDashboard(
     if (!container) return;
 
     const char =
-        getCharacter(id);
+        getScopedCharacter(
+            id,
+            groupId
+        );
 
     if (!char) return;
+
+    container.dataset.ccmCharacterId = id;
+    container.dataset.ccmGroupId = groupId;
 
     document
         .getElementById("ccm-list-controls")
@@ -57,7 +71,7 @@ export function renderCharacterDashboard(
 
     container.innerHTML = `
         <div class="ccm-dashboard-toolbar">
-            <button id="ccm-back-list">← Character List</button>
+            <button id="ccm-back-list">← ${groupId ? "Group" : "Character List"}</button>
             <button id="ccm-dashboard-close-chat">Close Chat</button>
         </div>
 
@@ -87,6 +101,9 @@ export function renderCharacterDashboard(
 
             <div class="ccm-character-identity">
                 <h3>${escapeHtml(char.name)}</h3>
+                ${groupId
+                    ? `<p class="ccm-scope-label">Group-specific continuity</p>`
+                    : ""}
                 <p class="ccm-character-meta">
                     ${escapeHtml(char.facts?.age?.value || "?")}
                     <span>•</span>
@@ -122,7 +139,7 @@ export function renderCharacterDashboard(
             ${renderKnowledge(char)}
         </div>
 
-        <section class="ccm-dashboard-management">
+        ${groupId ? "" : `<section class="ccm-dashboard-management">
             <h4>Character Management</h4>
             <div class="ccm-dashboard-button-grid">
                 ${
@@ -132,28 +149,33 @@ export function renderCharacterDashboard(
                 }
                 <button id="ccm-dashboard-delete" class="ccm-danger-button">Delete</button>
             </div>
-        </section>
+        </section>`}
     `;
 
     bindAutomationEvents(
         id,
-        char
+        char,
+        groupId
     );
 
     bindKnowledgeEvents(
-        id
+        id,
+        groupId
     );
 
     bindImageWorkspaceEvents(
         id,
-        actions
+        actions,
+        groupId
     );
 
     document
         .getElementById("ccm-back-list")
         .addEventListener(
             "click",
-            actions.renderCharacterList
+            () => groupId
+                ? actions.renderGroupDashboard(groupId)
+                : actions.renderCharacterList()
         );
 
 	document
@@ -171,9 +193,10 @@ export function renderCharacterDashboard(
         .getElementById("ccm-dashboard-edit")
         .addEventListener(
             "click",
-            () => actions.openEditor(
+			() => actions.openEditor(
 				id,
-				actions.renderCharacterDashboard
+				actions.renderCharacterDashboard,
+				groupId
 			)
         );
 
@@ -181,20 +204,29 @@ export function renderCharacterDashboard(
         .getElementById("ccm-dashboard-reextract")
         .addEventListener(
             "click",
-            () => actions.reExtractCharacter(id)
+            () => actions.reExtractCharacter(
+                id,
+                groupId
+            )
         );
 
     document
         .getElementById("ccm-dashboard-update-state")
         .addEventListener(
             "click",
-            () => actions.updateCharacterState(id)
+            () => actions.updateCharacterState(
+                id,
+                groupId
+            )
         );
 	document
 		.getElementById("ccm-dashboard-update-knowledge")
 		.addEventListener(
 			"click",
-			() => actions.updateCharacterKnowledge(id)
+			() => actions.updateCharacterKnowledge(
+				id,
+				groupId
+			)
 		);
 
     document
@@ -204,7 +236,11 @@ export function renderCharacterDashboard(
             () => actions.createCharacterImagePrompt(
                 id,
                 () => actions
-                    .renderCharacterDashboard(id)
+                    .renderCharacterDashboard(
+                        id,
+                        groupId
+                    ),
+                groupId
             )
         );
 
@@ -265,7 +301,10 @@ export function renderCharacterDashboard(
 
 		changeImageBtn.addEventListener(
 			"click",
-			() => actions.changeCharacterImage(id)
+			() => actions.changeCharacterImage(
+				id,
+				groupId
+			)
 		);
 
 	}
@@ -279,14 +318,17 @@ export function renderCharacterDashboard(
 
 		removeImageBtn.addEventListener(
 			"click",
-			() => actions.removeCharacterImage(id)
+			() => actions.removeCharacterImage(
+				id,
+				groupId
+			)
 		);
 
 	}
 
     document
         .getElementById("ccm-dashboard-delete")
-        .addEventListener(
+        ?.addEventListener(
             "click",
             () => {
                 if (!confirm(`Delete ${char.name}?`)) {

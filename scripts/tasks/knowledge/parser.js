@@ -1,7 +1,10 @@
 // scripts/tasks/knowledge/parser.js
 
-import schema
-from "./schema.js";
+import { debugLog } from "../../debug-logger.js";
+
+import {
+    parseJsonListResponse
+} from "./json-list-parser.js";
 
 function cleanResponse(
     text
@@ -25,19 +28,17 @@ export function parse(
     text
 ) {
 
-    console.log(
-        "[CCM] Parsing Knowledge"
-    );
 
     try {
 
         const data =
-            JSON.parse(
-                cleanResponse(text)
+            parseJsonListResponse(
+                text,
+                cleanResponse
             );
 
         if (!Array.isArray(data)) {
-            return structuredClone(schema);
+            throw new Error("Knowledge response did not contain a JSON list.");
         }
 
         return data
@@ -68,8 +69,16 @@ export function parse(
             "[CCM] Failed To Parse Knowledge",
             error
         );
+        debugLog("knowledge", "response.parse-failed", {
+            operation: "parse",
+            status: "failed",
+            errorType: error?.name || "Error"
+        });
 
-        return structuredClone(schema);
+        throw new Error(
+            "Knowledge response was not valid JSON.",
+            { cause: error }
+        );
 
     }
 

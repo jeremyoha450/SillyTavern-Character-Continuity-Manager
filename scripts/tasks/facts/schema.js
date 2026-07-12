@@ -77,6 +77,21 @@ const schema = {
         confidence: 0
     },
 
+    usualUpper: {
+        value: "",
+        confidence: 0
+    },
+
+    usualLower: {
+        value: "",
+        confidence: 0
+    },
+
+    usualFootwear: {
+        value: "",
+        confidence: 0
+    },
+
     upper: {
         value: "",
         confidence: 0
@@ -107,6 +122,11 @@ const schema = {
         confidence: 0
     },
 
+    covering: {
+        value: "",
+        confidence: 0
+    },
+
     location: {
         value: "",
         confidence: 0
@@ -123,6 +143,11 @@ const schema = {
     },
 
     positionDetail: {
+        value: "",
+        confidence: 0
+    },
+
+    legs: {
         value: "",
         confidence: 0
     },

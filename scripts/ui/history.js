@@ -1,10 +1,5 @@
 // scripts/ui/history.js
 
-// confidence.js
-import {
-    renderConfidence
-} from "./confidence.js";
-
 // section-state.js
 import {
     loadSectionState
@@ -48,7 +43,12 @@ export function renderHistory(
 
                                     <div class="ccm-history-changes">
                                         ${
-                                            item.changes
+                                            item.message
+                                                ? `<p class="ccm-history-message">${escapeHtml(item.message)}</p>`
+                                                : ""
+                                        }
+                                        ${
+                                            (item.changes || [])
                                                 .map(change => `
                                                     <div class="ccm-history-change">
                                                         <strong>${escapeHtml(change.field)}</strong><br>

@@ -1,5 +1,11 @@
 // scripts/tasks/knowledge-update/parser.js
 
+import { debugLog } from "../../debug-logger.js";
+
+import {
+    parseJsonListResponse
+} from "../knowledge/json-list-parser.js";
+
 function cleanResponse(
     text
 ) {
@@ -22,9 +28,6 @@ export function parse(
     text
 ) {
 
-    console.log(
-        "[CCM] Parsing Knowledge Update"
-    );
 
     if (typeof text !== "string") {
 
@@ -39,8 +42,9 @@ export function parse(
     try {
 
         data =
-            JSON.parse(
-                cleanResponse(text)
+            parseJsonListResponse(
+                text,
+                cleanResponse
             );
 
     } catch (error) {
@@ -49,6 +53,11 @@ export function parse(
             "[CCM] Failed To Parse Knowledge Update",
             error
         );
+        debugLog("knowledge", "update-response.parse-failed", {
+            operation: "parse-update",
+            status: "failed",
+            errorType: error?.name || "Error"
+        });
 
         // An unparseable response must fail the update.
         // Returning an empty list here would be saved as
