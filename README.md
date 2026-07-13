@@ -2,7 +2,7 @@
 
 Character Continuity Manager (CCM) is a SillyTavern extension that tracks character facts, current state, and durable knowledge across chats.
 
-**Current release candidate:** `1.0.0-rc3`
+**Current release:** `1.0.0`
 
 ## Features
 

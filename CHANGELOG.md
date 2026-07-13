@@ -1,5 +1,38 @@
 # Character Continuity Manager Changelog
 
+## 1.0.0
+
+### Core continuity
+
+- Stable facts, current state, durable knowledge, field locks, confidence, update history, inventory, and configurable automation.
+- Independent solo and group-specific continuity with shared group scenes, member targeting, and strict solo/group scope isolation.
+
+### Character creation
+
+- Guided and AI-assisted native V3 character creation with connected casts, lorebooks, tags, avatars, imports, review, and SillyTavern save.
+
+### Images
+
+- Editable image-prompt presets and SillyTavern Image Generation integration with prompt history, gallery, reuse, and character-image assignment.
+- Correct group shared-scene image context while preserving member-specific pose, expression, clothing, hands, and other state.
+
+### Providers
+
+- OpenAI Compatible, OpenAI, OpenRouter, DeepSeek, NanoGPT, Ollama, Anthropic, Gemini, and SillyTavern active-model routing.
+- Bounded structured-output correction, direct-provider timeout handling, and privacy-safe categorized provider errors.
+
+### Security and reliability
+
+- Fixed toast injection; added guarded storage, bounded card-import resources, bounded image history, scope-aware automation locks, deterministic release tooling, and CI.
+
+### Validation
+
+- 247/247 unit tests passed; 6 browser tests passed and 3 optional provider-backed checks skipped.
+- Fresh installation, populated rc1 upgrade, solo/group continuity, Character Creator native save, provider-backed requests, and the configured NoobAI workflow passed.
+- Source, artifact, and disposable installation match 106/106 with zero blocking CCM errors.
+
+Training Data Collection remains experimental, explicit opt-in, bounded, and off by default. CCM-AI remains a separate project. Database Inspector and AI Context Viewer are not included. Knowledge history is intentionally omitted. The v1.0.x line is limited to bug-fix and compatibility maintenance.
+
 ## 1.0.0-rc3
 
 ### Fixed

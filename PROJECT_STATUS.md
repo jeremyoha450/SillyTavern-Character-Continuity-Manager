@@ -2,7 +2,7 @@
 
 **Updated:** 2026-07-13
 
-**Manifest:** `1.0.0-rc3`
+**Manifest:** `1.0.0`
 
 **Database / AI settings:** 5 / 7
 **State:** repository hardening, LF reproducibility, fresh-clone validation, and artifact-only installed synchronization complete
@@ -14,7 +14,7 @@
 - Deterministic artifact: 106 runtime files.
 - Corrected source, artifact, and disposable installed extension: 106/106 hashes match; none missing or different.
 - Browser: 6 non-live checks passed and 3 provider-backed checks skipped.
-- Health: CCM `1.0.0-rc3`, database 5, AI settings 7, SillyTavern 1.18.0.
+- Health: CCM `1.0.0`, database 5, AI settings 7, SillyTavern 1.18.0.
 
 ## Hardening completed
 
@@ -27,7 +27,7 @@
 
 Database Inspector, AI Context Viewer, knowledge history, AI Benchmark, Recovery Tools, timeline, backup/restore UI, rollback, and separate image backend are not being developed here. Knowledge history is intentionally omitted. Training collection remains experimental, opt-in, and default-off.
 
-RC2 is ready for a short external/disposable validation period. Final 1.0.0 is not justified until that RC validation is complete.
+Final `1.0.0` has passed the complete technical promotion matrix. The release line is limited to bug-fix and compatibility maintenance.
 
 ## External validation — 2026-07-13
 
@@ -76,4 +76,4 @@ The working version remains `1.0.0-rc2`. A distinct `1.0.0-rc3` candidate is jus
 - The test exposed a CCM dashboard navigation defect: chat-dependent buttons used SillyTavern's previously active card. Start New Chat, Re-extract Facts, Update State, and Update Knowledge now share Image Prompt's active-chat warning/open-card preflight.
 - The rebuilt correction passes 247/247 unit tests, 15/15 focused image/group tests, 6 browser passes with 3 optional skips, a 106-file verified artifact, zero privacy/secret/LF findings, exact 106/106 source/artifact/install equality, and zero CCM console errors.
 
-All RC3 promotion gates now pass. Final `1.0.0` is technically justified but is not authorized by this task.
+All RC3 promotion gates passed. Final `1.0.0` was subsequently authorized and prepared from that exact validated code without feature or behavior changes.

@@ -1,14 +1,14 @@
 # Release Readiness
 
-**Updated:** 2026-07-13 — manifest `1.0.0-rc3`
+**Updated:** 2026-07-13 — manifest `1.0.0`
 
-Repository hardening and reproducibility blockers are fixed. CCM `1.0.0-rc3` contains the validated group-image context correction and the generalized active-character-chat preflight. All automatic and manual promotion gates now pass in the disposable profile.
+Repository hardening and reproducibility blockers are fixed. CCM `1.0.0` is prepared from the exact validated RC3 code, including the group-image context correction and generalized active-character-chat preflight. All automatic and manual promotion gates pass in the disposable profile.
 
 Fixed: toast injection, blocked storage, card-import resource limits, unbounded image history, automation scope collisions, missing direct-provider timeout, release inclusion policy, and CI.
 
 Deferred: safe manual cancellation for the SillyTavern active-model path; non-destructive knowledge size monitoring/deduplication. Knowledge is not silently pruned. Rejected/deferred UI features remain excluded.
 
-Remaining administrative gate: explicit authorization to change the manifest to final `1.0.0`. The technical promotion matrix is complete.
+The complete technical promotion matrix passes. The remaining external actions are the separately authorized tag and publication steps.
 
 ## External validation — 2026-07-13
 
@@ -44,4 +44,8 @@ The disposable 12B chat model produced real labelled group replies. Alpha-only s
 
 The sequence exposed one CCM defect: dashboard chat actions could act on SillyTavern's previously selected card when the dashboard displayed a different CCM record. The shared active-chat preflight now guards Start New Chat, Re-extract Facts, Update State, and Update Knowledge as well as Image Prompt. Live cancellation showed the action-specific warning before any request; confirmation selected Fixture Alpha and reached SillyTavern's native new-chat confirmation for that card. No provider call occurred during the preflight checks and no CCM console error remained.
 
-The post-fix release rerun passes 247/247 unit tests, 15/15 focused tests, 6 browser passes with 3 optional skips, 106-file build/verify, privacy/secret/LF scans, and exact 106/106 installed equality. Final `1.0.0` is technically justified, subject to separate authorization.
+The post-fix release rerun passes 247/247 unit tests, 15/15 focused tests, 6 browser passes with 3 optional skips, 106-file build/verify, privacy/secret/LF scans, and exact 106/106 installed equality. Final `1.0.0` is technically justified and authorized.
+
+## Final 1.0.0 promotion — 2026-07-13
+
+Final `1.0.0` contains the exact validated RC3 production code. Only active version fields and release documentation changed. Database 5 and AI settings 7 remain unchanged. Fresh installation, populated rc1 upgrade, solo/group continuity, native Character Creator save, provider-backed structured updates, configured NoobAI image generation, automatic group targeting, scope isolation, security checks, deterministic packaging, and disposable installation equality all pass. No blocking CCM error remains.

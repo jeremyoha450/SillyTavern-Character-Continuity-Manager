@@ -1,7 +1,7 @@
 # Release Artifact Manifest
 
 **Generated/verified:** 2026-07-13 +10:00
-**Manifest version:** `1.0.0-rc3`
+**Manifest version:** `1.0.0`
 **Build command:** `npm run release:build`
 
 The deterministic artifact is `release/ccm` and contains exactly 106 files selected by `tools/release.mjs`:
@@ -14,8 +14,8 @@ The inclusion rule is intentionally narrow and executable; adding a runtime modu
 
 Excluded: `.git`, `.github`, `.claude`, `node_modules`, `tests`, `tools`, `release`, package files, audit/release/project reports other than README, logs, browser artifacts, training/debug exports, CCM-AI, characters, chats, images, and all SillyTavern user data/settings.
 
-The RC3 source/artifact/install equality and aggregate digest are recorded after the authorized rc3 rebuild and disposable synchronization. Installation tooling copies only approved files and does not access SillyTavern user-data directories.
+The final source/artifact/install equality and aggregate digest are recorded after the authorized final rebuild and disposable synchronization. Installation tooling copies only approved files and does not access SillyTavern user-data directories.
 
-The verified RC3 aggregate runtime digest is `3b06030a18e7972544b36a7345ae3cbe1b2c4dd5a99cc1f65b2b11ba94834609`.
+The verified final aggregate runtime digest is `0370468ce22338b3f8eabfb810a480c47047c03d3d0104dd8864630842342437`.
 
 The final disposable comparison reports 106/106 matching runtime files, zero missing, zero different, and zero extra. The artifact scan reports zero credential patterns, zero private-data paths, and zero CRLF files.
