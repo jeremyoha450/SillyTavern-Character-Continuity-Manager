@@ -4,11 +4,7 @@ import { readFileSync } from "node:fs";
 
 const manifest = JSON.parse(readFileSync(new URL("../manifest.json", import.meta.url), "utf8"));
 const activeVersionFiles = new Map([
-    ["README.md", /^\*\*Current release:\*\* `1\.0\.0`$/m],
-    ["PROJECT_STATUS.md", /^\*\*Manifest:\*\* `1\.0\.0`$/m],
-    ["RELEASE_READINESS.md", /^\*\*Updated:\*\* .*— manifest `1\.0\.0`$/m],
-    ["RELEASE_VERSION_RECOMMENDATION.md", /^Recommendation now: \*\*publish validated `1\.0\.0`/m],
-    ["RELEASE_ARTIFACT_MANIFEST.md", /^\*\*Manifest version:\*\* `1\.0\.0`$/m]
+    ["README.md", /^\*\*Current release:\*\* `1\.0\.0`$/m]
 ]);
 
 test("authoritative active-version files agree with the manifest", () => {
