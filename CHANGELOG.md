@@ -1,5 +1,30 @@
 # Character Continuity Manager Changelog
 
+## 1.0.0-rc3
+
+### Fixed
+
+- Image Prompt now checks for the selected character's active chat before contacting the AI provider or creating prompt history. When needed, CCM explains the requirement and offers an explicit **Open Character Chat** action instead of allowing image generation to fail with an unrelated image-URL error.
+- Start New Chat, Re-extract Facts, Update State, and Update Knowledge now perform the same active-character-chat preflight. They explain the requirement and can open the matching card before continuing, instead of acting on SillyTavern's previously selected character.
+- Group-scoped image prompts now use non-empty shared group scene location and area before member/solo fallbacks.
+- Group member pose, expression, hands, clothing, and other member-specific state remain group-scoped.
+- Solo image prompts remain unchanged.
+
+### Tests
+
+- Added behavior coverage for shared location precedence, shared area precedence, member pose preservation, empty-scene fallback, solo isolation, non-mutation, and group prompt-history scope.
+
+### Validation
+
+- 247/247 unit tests passed.
+- 15/15 focused image/group tests passed.
+- 6 browser tests passed; 3 optional provider-backed tests skipped.
+- The 106-file release artifact was verified with exact 106/106 artifact/install equality.
+- Manual three-card group validation passed.
+- Automatic speaker targeting, explicit Alpha-to-Gamma mention targeting, and live solo/group Auto State isolation passed with the disposable 12B chat model and configured CCM provider.
+- The dashboard preflight correction was rebuilt, synchronized, and live-tested for all four guarded actions with zero CCM console errors.
+- Final `1.0.0` is technically justified by the completed RC3 promotion matrix, but still requires separate authorization.
+
 ## 1.0.0-rc2
 
 ### Security
@@ -31,6 +56,34 @@
 - Fresh-clone artifact verified.
 
 Training Data Collection remains experimental, opt-in, bounded, and off by default. Database Inspector and AI Context Viewer are not part of rc2. Knowledge history remains intentionally omitted. Final 1.0.0 still requires external RC validation.
+
+### External validation — 2026-07-13
+
+- Passed a clean installation in an isolated SillyTavern 1.18.0 data root: launcher, dashboard, Settings, Health, database 5, AI settings 7, clean runtime directory, and zero CCM console errors.
+- No CCM bug or data loss was observed and no fix was made.
+- Populated rc1 upgrade, solo/group continuity, native Character Creator save, provider-backed request, and configured image workflow remain untested. Final 1.0.0 is not yet justified.
+
+### External validation continuation — 2026-07-13
+
+- Passed a populated synthetic rc1-to-rc2 upgrade with exact preservation of three characters, one group, continuity data, locks, automation, image/prompt history, usage, and provider/model/preset settings.
+- Passed Character Creator navigation, validation, and native V3 card save in the isolated profile.
+- Solo stored-data display passed; live solo/group AI updates were not run.
+- No disposable provider or image service was reachable, so provider-backed and configured-image gates remain untested. No CCM bug was proved and no fix was made. Final 1.0.0 remains unjustified.
+- Follow-up service testing reached the corrected 4B provider, but automatic extraction exhausted one bounded corrective retry without usable structured output. ComfyUI was reachable but lacked a disposable workflow mapping. No CCM fix was made; final 1.0.0 remains unjustified.
+
+### Final-gate attempt — 2026-07-13 15:15 +10:00
+
+- Passed one credential-free 4B State update with five merged changes, one bounded corrective retry, history update, and correct provider/model attribution.
+- Passed native V3 automatic CCM tracking with one record, Facts extraction, initial Knowledge extraction, and no duplicate.
+- Matched NoobAI to `Noobai_locked.json` and `NoobAI-XL-Vpred-v1.0` at 512x512; Flux was not tested. Prompt preview and Prompt History passed, but SillyTavern returned no image URL and no matching disposable request reached ComfyUI history.
+- The active disposable profile contained only two SillyTavern cards and no live group, so live three-card targeting and scope isolation were not run.
+- No code, prompt, schema, manifest, or version change was made. Final 1.0.0 remains unjustified.
+
+### Image-gate correction — 2026-07-13 15:47 +10:00
+
+- The previous image failure was invalidated as a tester-procedure error caused by running outside the matching character chat.
+- A read-only observed CCM run generated successfully with NoobAI and `Noobai_locked.json`; Gallery increased from 2 to 3 without any settings change.
+- The configured-image gate passes. The live three-card group-scope gate remains outstanding.
 
 ## Unreleased — release hardening (2026-07-12)
 

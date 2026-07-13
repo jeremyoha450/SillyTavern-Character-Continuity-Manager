@@ -2,7 +2,8 @@
 
 import {
     getCharacter,
-    getScopedCharacter
+    getScopedCharacter,
+    getGroupContext
 } from "../database.js";
 
 import {
@@ -38,95 +39,17 @@ import {
 } from "../group-context.js";
 
 import {
+    openSillyTavernCharacterChat
+} from "../image-chat-context.js";
+
+import {
+    buildImageContinuity
+} from "../image-context.js";
+
+import {
     generateWithSillyTavernImage,
     getSillyTavernImageSetupError
 } from "../sillytavern-image.js";
-
-const STATE_FIELDS = new Set([
-    "upper",
-    "outerwear",
-    "lower",
-    "footwear",
-    "underwearTop",
-    "underwearBottom",
-    "covering",
-    "location",
-    "position",
-    "area",
-    "positionDetail",
-    "legs",
-    "leftHand",
-    "rightHand",
-    "headPosition",
-    "eyeDirection",
-    "expression",
-    "mood",
-    "moodIntensity",
-    "accessories",
-    "penis",
-    "penisState",
-    "penisCondition",
-    "pussy",
-    "pussyState",
-    "pussyCondition",
-    "condition",
-    "injuries"
-]);
-
-const EXCLUDED_FIELDS = new Set([
-    "characterName",
-    "notes",
-    // Wardrobe preference, not what is currently worn: the
-    // state clothing fields are the only clothing source for
-    // an image of the current moment. Sending the usual
-    // outfit re-dresses nude characters in the prompt.
-    "usualUpper",
-    "usualLower",
-    "usualFootwear"
-]);
-
-function getCurrentContinuity(
-    character
-) {
-
-    const facts = {};
-    const state = {};
-
-    for (
-        const [field, data]
-        of Object.entries(character.facts || {})
-    ) {
-
-        if (EXCLUDED_FIELDS.has(field)) {
-            continue;
-        }
-
-        const value =
-            data?.value;
-
-        if (
-            value !== undefined &&
-            value !== null &&
-            String(value).trim()
-        ) {
-            const destination =
-                STATE_FIELDS.has(field)
-                    ? state
-                    : facts;
-
-            destination[field] = value;
-        }
-
-    }
-
-    return {
-        primaryCharacter: {
-            facts,
-            state
-        }
-    };
-
-}
 
 async function generateWithSillyTavern(
     characterId,
@@ -152,6 +75,79 @@ async function generateWithSillyTavern(
     }
 
     return generateWithSillyTavernImage(positive, negative);
+}
+
+export async function ensureActiveCharacterChat(
+    character,
+    actionLabel = "This action"
+) {
+    const context =
+        SillyTavern.getContext();
+
+    if (
+        isCharacterInCurrentContext(
+            context,
+            character
+        )
+    ) {
+        return true;
+    }
+
+    const message =
+        `${actionLabel} requires an active chat with this character.`;
+
+    const confirmOpen =
+        context?.Popup?.show?.confirm;
+
+    if (typeof confirmOpen !== "function") {
+        showCCMError(message);
+        return false;
+    }
+
+    const confirmed =
+        await context.Popup.show.confirm(
+            "Open Character Chat?",
+            `${message} Open the chat now?`,
+            {
+                okButton:
+                    "Open Character Chat",
+                cancelButton: "Cancel"
+            }
+        );
+
+    if (!confirmed) return false;
+
+    try {
+        await openSillyTavernCharacterChat(
+            context,
+            character
+        );
+    } catch (error) {
+        console.error(
+            "[CCM] Failed to open character chat",
+            error
+        );
+
+        showCCMError(
+            error.message ||
+            "Failed to open the character chat."
+        );
+        return false;
+    }
+
+    if (
+        !isCharacterInCurrentContext(
+            SillyTavern.getContext(),
+            character
+        )
+    ) {
+        showCCMError(
+            "SillyTavern did not activate the selected character chat."
+        );
+        return false;
+    }
+
+    return true;
 }
 
 function showImagePrompt(
@@ -617,6 +613,15 @@ export async function createCharacterImagePrompt(
         return;
     }
 
+    if (
+        !await ensureActiveCharacterChat(
+            character,
+            "Image generation"
+        )
+    ) {
+        return;
+    }
+
     showCCMStatus(`
         <div style="font-size:52px;">⏳</div>
         <br>
@@ -628,8 +633,20 @@ export async function createCharacterImagePrompt(
     try {
 
         const continuity =
-            getCurrentContinuity(
-                character
+            buildImageContinuity(
+                character,
+                {
+                    groupScene:
+                        groupId
+                            ? getGroupContext(
+                                groupId
+                            )?.scene
+                            : null,
+                    baseCharacter:
+                        groupId
+                            ? getCharacter(id)
+                            : null
+                }
             );
 
         const parsedPrompt =

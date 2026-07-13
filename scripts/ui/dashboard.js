@@ -36,6 +36,10 @@ import {
 
 import { debugLog } from "../debug-logger.js";
 
+import {
+    ensureActiveCharacterChat
+} from "./image-prompt.js";
+
 export function renderCharacterDashboard(
     id,
     actions,
@@ -169,6 +173,23 @@ export function renderCharacterDashboard(
         groupId
     );
 
+    const runWithActiveCharacterChat =
+        async (
+            actionLabel,
+            action
+        ) => {
+            if (
+                !await ensureActiveCharacterChat(
+                    char,
+                    actionLabel
+                )
+            ) {
+                return;
+            }
+
+            await action();
+        };
+
     document
         .getElementById("ccm-back-list")
         .addEventListener(
@@ -204,9 +225,12 @@ export function renderCharacterDashboard(
         .getElementById("ccm-dashboard-reextract")
         .addEventListener(
             "click",
-            () => actions.reExtractCharacter(
-                id,
-                groupId
+            () => runWithActiveCharacterChat(
+                "Re-extracting facts",
+                () => actions.reExtractCharacter(
+                    id,
+                    groupId
+                )
             )
         );
 
@@ -214,18 +238,24 @@ export function renderCharacterDashboard(
         .getElementById("ccm-dashboard-update-state")
         .addEventListener(
             "click",
-            () => actions.updateCharacterState(
-                id,
-                groupId
+            () => runWithActiveCharacterChat(
+                "Updating state",
+                () => actions.updateCharacterState(
+                    id,
+                    groupId
+                )
             )
         );
 	document
 		.getElementById("ccm-dashboard-update-knowledge")
 		.addEventListener(
 			"click",
-			() => actions.updateCharacterKnowledge(
-				id,
-				groupId
+			() => runWithActiveCharacterChat(
+				"Updating knowledge",
+				() => actions.updateCharacterKnowledge(
+					id,
+					groupId
+				)
 			)
 		);
 
@@ -255,11 +285,12 @@ export function renderCharacterDashboard(
 		.getElementById("ccm-dashboard-new-chat")
 		.addEventListener(
 			"click",
-			() => {
-				document
+			() => runWithActiveCharacterChat(
+				"Starting a new chat",
+				() => document
 					.getElementById("option_start_new_chat")
-					?.click();
-			}
+					?.click()
+			)
 		);
 
     const archiveBtn =

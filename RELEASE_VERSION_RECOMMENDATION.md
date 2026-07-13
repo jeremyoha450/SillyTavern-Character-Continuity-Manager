@@ -2,8 +2,8 @@
 
 **Date:** 2026-07-13
 
-Recommendation now: **distribute `1.0.0-rc2` for a short external/disposable validation period**. Repository hardening is committed, the LF policy makes Windows checkouts reproducible, the full local validation sequence passes, and source/artifact/install match 104/104 with no differences.
+Recommendation now: **retain validated `1.0.0-rc3` until final-version authorization is given, then promote to `1.0.0` without feature changes**. RC2's group-image defect is fixed, the automatic group gates pass, and the dashboard active-chat navigation defect found during RC3 validation is fixed and revalidated.
 
-Do not promote to final **`1.0.0`** until RC2 has completed external validation. Provider-backed manual smoke should use a clearly disposable local record. Do not use `1.0.1` before a final 1.0.0 exists.
+The technical evidence justifies final **`1.0.0`**, but this task does not authorize that manifest change or a tag. Do not use `1.0.1` before final 1.0.0 exists.
 
 Training Data Collection should remain in v1 at lowest risk: it is isolated, experimental, explicit opt-in, default-off, bounded, and tested. Removing it now would create unnecessary regression risk. Documentation must continue to state that captured records are candidates, CCM-AI is separate, and model training is not justified.

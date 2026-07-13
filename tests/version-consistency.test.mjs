@@ -12,7 +12,7 @@ const activeVersionFiles = [
 ];
 
 test("authoritative active-version files agree with the manifest", () => {
-    assert.equal(manifest.version, "1.0.0-rc2");
+    assert.equal(manifest.version, "1.0.0-rc3");
     for (const file of activeVersionFiles) {
         const content = readFileSync(new URL(`../${file}`, import.meta.url), "utf8");
         assert.match(content, new RegExp(manifest.version.replaceAll(".", "\\.")), `${file} must name the manifest version`);
