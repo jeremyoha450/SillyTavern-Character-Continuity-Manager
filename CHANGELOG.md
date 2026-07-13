@@ -1,5 +1,37 @@
 # Character Continuity Manager Changelog
 
+## 1.0.0-rc2
+
+### Security
+
+- Fixed stored toast HTML injection.
+
+### Reliability
+
+- Guarded blocked localStorage access.
+- Added safe card-import size and PNG validation limits.
+- Added bounded direct-provider request timeouts.
+- Fixed solo/group automation scope collisions.
+- Added bounded image-history retention.
+
+### Release engineering
+
+- Added deterministic release artifact tooling.
+- Added CI checks.
+- Added explicit LF line-ending policy.
+- Verified fresh-clone reproducibility.
+- Verified source/artifact/install equality for 104 runtime files.
+
+### Validation
+
+- 232/232 unit tests passed.
+- 6 browser tests passed.
+- 3 optional provider-backed browser tests skipped.
+- Secret/privacy scan passed.
+- Fresh-clone artifact verified.
+
+Training Data Collection remains experimental, opt-in, bounded, and off by default. Database Inspector and AI Context Viewer are not part of rc2. Knowledge history remains intentionally omitted. Final 1.0.0 still requires external RC validation.
+
 ## Unreleased — release hardening (2026-07-12)
 
 - Fixed toast HTML injection by rendering messages as literal text.
