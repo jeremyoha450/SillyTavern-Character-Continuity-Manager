@@ -1,7 +1,7 @@
 # CCM 1.0.0-rc2 Validation
 
 **Version:** `1.0.0-rc2`
-**Version commit:** `7887ee28557b68184923b859f921ca6fcf19c9c5`
+**Version commit:** `7887ee270c136d65c38197e86c77ee6c9b2f63aa`
 **Date:** 2026-07-13
 
 ## Commands and results
