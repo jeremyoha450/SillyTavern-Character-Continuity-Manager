@@ -1,7 +1,7 @@
 # CCM 1.0.0-rc2 Validation
 
 **Version:** `1.0.0-rc2`
-**Version commit:** this document's containing release commit; the immutable hash is recorded in the follow-up documentation record
+**Version commit:** `7887ee28557b68184923b859f921ca6fcf19c9c5`
 **Date:** 2026-07-13
 
 ## Commands and results
