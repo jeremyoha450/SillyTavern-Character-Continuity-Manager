@@ -9,7 +9,9 @@
 - Isolated automation counters/locks by character and solo/group scope.
 - Added 60-second direct-provider timeouts and distinct cancellation classification.
 - Added hardening/artifact tests, deterministic release tooling, exclusions, and CI; 232 tests pass.
-- Manifest remains `1.0.0-rc1`; installation and live validation are pending.
+- Added a repository LF checkout policy and proved the prior 89 fresh-clone/install mismatches were newline-only.
+- Validated a brand-new exact-commit clone and synchronized its artifact: source, artifact, and install match 104/104 with zero missing or different files.
+- Manifest remains `1.0.0-rc1`; an explicit `1.0.0-rc2` bump is justified but not yet authorized.
 
 ## v1.0.1 release-validation candidate — not bumped yet
 

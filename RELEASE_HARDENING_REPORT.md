@@ -1,6 +1,6 @@
 # Release Hardening Report
 
-**Run:** 2026-07-12 +10:00
+**Run:** 2026-07-12 to 2026-07-13 +10:00
 **Manifest:** `1.0.0-rc1` unchanged
 
 ## Implemented
@@ -20,9 +20,10 @@
 - Full tests after changes: 232 passed.
 - `npm ci`: pass, 3 packages installed.
 - Production syntax/runtime JSON checks: pass.
-- `git diff --check`: pass (line-ending notices only).
+- Explicit LF checkout policy committed in `612e5d035ecc3d445f93acfa38d01db3a4debd82`; the 89 prior mismatches were proven to be newline-only.
+- `git diff --check`: pass.
 - Artifact secret-pattern scan: no known credential patterns.
-- Install comparison after approved sync: 104 match, 0 missing/different.
+- Exact fresh-clone source/artifact/install comparison after approved artifact-only sync: 104/104 match at both boundaries, 0 missing/different.
 - Non-live browser: 6 passed, 3 provider-backed skipped.
 - Health: CCM rc1, DB 5, AI 7, SillyTavern 1.18.0; browser console had no errors.
 
@@ -32,7 +33,7 @@ Manual Cancel UI and late-response protection for the non-abortable SillyTavern 
 
 ## Remaining release work
 
-The installed runtime is synchronized. The repository remains materially dirty and requires intentional review/commit. Provider-backed manual smoke was not run because no clearly isolated disposable continuity record was identifiable.
+The installed runtime is synchronized from the validated fresh-clone artifact and release-relevant commits are cleanly separated. Provider-backed manual smoke was not run because no clearly isolated disposable continuity record was identifiable. That optional live-model check remains the only unexecuted validation item; it does not block an explicit `1.0.0-rc2` candidate bump, but final `1.0.0` remains premature.
 
 ## Files changed by this hardening pass
 
