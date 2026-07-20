@@ -27,7 +27,8 @@ FIELD PURPOSES
 - alternate_greetings: 1-3 meaningful alternative solo openings, each written in the same canonical dialogue format as first_mes — never as a single prose paragraph. Like first_mes, end each one on {{char}}'s own state or action rather than an invitation or leading question aimed at {{user}}.
 - group_only_greetings: 1-2 openings that acknowledge the connected cast.
 - tags: choose 5-12 concise, accurate tags supported by the completed card. Prefer supplied availableTags when relevant, but create a precise new tag when needed. Include useful identity, genre, relationship, personality, setting, and SFW/NSFW classification tags only when supported. Do not add contradictory tags, near-duplicates, or every available tag.
-- character_book: concise objective lore entries for important people, places, factions, powers, and shared history. Keys should trigger naturally. If the personality includes resistant traits (anger, withdrawal, hostility, distrust, defensiveness, reluctance), also generate 3-4 additional entries keyed to comfort-attempt trigger words {{user}} would plausibly use, chosen naturally for this character and scenario — for example "sorry," "it's okay," "let me help," "hug," "calm down," or "talk to me." Each such entry's content must state, in plain declarative instructional sentences — not roleplay prose, no actions, no quoted dialogue — how {{char}} actually reacts to that specific kind of approach given their established personality (for example, that sympathy reads to them as pity and sharpens their defensiveness, or that being told to calm down escalates rather than soothes them). Do not generate these conditional entries for characters without resistant traits.
+- character_book: concise objective lore entries for important people, places, factions, powers, and shared history. Keys should trigger naturally. Set each entry's "placement" to "before_char" — this is the default for static background lore and can be omitted.
+  If the personality includes resistant traits (anger, withdrawal, hostility, distrust, defensiveness, reluctance), also generate 3-4 additional entries keyed to comfort-attempt trigger words {{user}} would plausibly use, chosen naturally for this character and scenario — for example "sorry," "it's okay," "let me help," "hug," "calm down," or "talk to me." Each such entry's content must state, in plain declarative instructional sentences — not roleplay prose, no actions, no quoted dialogue — how {{char}} actually reacts to that specific kind of approach given their established personality (for example, that sympathy reads to them as pity and sharpens their defensiveness, or that being told to calm down escalates rather than soothes them). Set these entries' "placement" to "depth" so SillyTavern's World Info engine inserts a match close to the message that triggered it instead of at the top of context, near-simultaneous with the character's current reaction. Do not generate these conditional entries for characters without resistant traits.
 - system_prompt: leave blank unless genuinely necessary.
 - post_history_instructions: always populate with concrete behavioral pacing rules grounded in the character's actual personality and current emotional state, not generic boilerplate. At minimum, state that a single kind gesture, apology, or friendly line from {{user}} does not by itself soften the character's guardedness, anger, or resistance; that any softening happens only in small increments across multiple consistent exchanges, never in one turn; that direct emotional probing, demands to "open up," or requests that the character explain their feelings increase resistance rather than reduce it; and that the character may refuse requests, remain angry, disengage, or end the interaction rather than comply. Tailor the specific triggers and thresholds to this character's established personality and relationship to {{user}}. Also state concretely HOW softening is earned, not only what is resisted — for example, whether {{char}} responds better to {{user}} giving space than to being pursued, what a small, believable softening looks like after {{user}} demonstrates patience across multiple exchanges, and that occasional setbacks into old guardedness are a normal part of that process, not a reset to zero. The goal is a gradual slope {{user}} can climb, not a wall that suddenly collapses. End with this formatting rule stated plainly: actions belong in parentheses; all speech is in double quotes on its own line; never write unquoted dialogue.
 - depth_prompt: a short reminder (1-3 sentences) inserted into the conversation as a system note to keep the character's behaviour consistent. Avoid vague directives like "maintain tension" or "stay in character." Use concrete, checkable rules instead, such as: prioritize the character's established emotional state over what {{user}} appears to want in this moment; do not let politeness or persistence from {{user}} override unresolved anger, distrust, or boundaries; keep {{char}}'s reactions proportionate to what has actually happened in the scene, not to what would be convenient for {{user}}.
@@ -47,6 +48,11 @@ Example mes_example exchange showing held resistance and the canonical dialogue 
 {{char}}: (Arms crossed, voice flat.)
 "Being here isn't the same as being sorry. You can stand there all day; it won't change how I feel about last week."
 Note two things: the character does not thank, forgive, or soften toward {{user}} by the end of the exchange, and every action is a parenthetical on its own line while every spoken line is double-quoted on its own line — never "(glances at the cup) One coffee doesn't undo what you said."
+
+Example character_book entries, one static-lore entry and one comfort-trigger entry (use this shape, not this exact text):
+{"keys": ["roommate", "argument"], "comment": "Relationship", "content": "{{char}} and {{user}} are roommates who argued three days ago.", "placement": "before_char"}
+{"keys": ["sorry", "apologize"], "comment": "Reacts to apology", "content": "An apology alone does not soften {{char}}. It registers as words, not proof, and {{char}} stays guarded until {{user}}'s behavior is consistent over time.", "placement": "depth"}
+Note that the comfort-trigger entry uses "placement": "depth" so it surfaces near the message that triggered it, while the static-lore entry uses "before_char".
 
 Schema:
 {
@@ -68,7 +74,7 @@ Schema:
   "character_book": {
     "name": "",
     "entries": [
-      {"keys": [""], "comment": "", "content": ""}
+      {"keys": [""], "comment": "", "content": "", "placement": "before_char"}
     ]
   }
 }`;
@@ -124,7 +130,8 @@ function parse(text) {
                         ? stringArray(entry.keys)
                         : stringValue(entry?.keys).split(",").map(value => value.trim()).filter(Boolean),
                     comment: stringValue(entry?.comment),
-                    content: stringValue(entry?.content)
+                    content: stringValue(entry?.content),
+                    placement: stringValue(entry?.placement) === "depth" ? "depth" : "before_char"
                 })).filter(entry => entry.content)
         }
     };

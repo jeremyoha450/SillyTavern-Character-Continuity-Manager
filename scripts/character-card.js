@@ -1,23 +1,28 @@
 function normalizedEntries(book) {
-    return (book?.entries || []).map((entry, index) => ({
-        id: index,
-        keys: Array.isArray(entry.keys) ? entry.keys : [],
-        secondary_keys: [],
-        comment: entry.comment || "",
-        content: entry.content || "",
-        constant: false,
-        selective: false,
-        insertion_order: 100,
-        enabled: true,
-        position: "before_char",
-        use_regex: true,
-        extensions: {
-            position: 0,
-            probability: 100,
-            useProbability: true,
-            display_index: index
-        }
-    }));
+    return (book?.entries || []).map((entry, index) => {
+        const atDepth = entry.placement === "depth";
+
+        return {
+            id: index,
+            keys: Array.isArray(entry.keys) ? entry.keys : [],
+            secondary_keys: [],
+            comment: entry.comment || "",
+            content: entry.content || "",
+            constant: false,
+            selective: false,
+            insertion_order: 100,
+            enabled: true,
+            position: atDepth ? "after_char" : "before_char",
+            use_regex: true,
+            extensions: {
+                position: atDepth ? 4 : 0,
+                ...(atDepth ? { depth: 3, role: 0 } : {}),
+                probability: 100,
+                useProbability: true,
+                display_index: index
+            }
+        };
+    });
 }
 
 export function buildCharacterCard(card, creator = "") {
