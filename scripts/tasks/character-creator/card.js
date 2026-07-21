@@ -56,10 +56,12 @@ Example mes_example exchange showing held resistance and the canonical dialogue 
 "Being here isn't the same as being sorry. You can stand there all day; it won't change how I feel about last week."
 Note two things: the character does not thank, forgive, or soften toward {{user}} by the end of the exchange, and every action is a parenthetical on its own line while every spoken line is double-quoted on its own line — never "(glances at the cup) One coffee doesn't undo what you said."
 
-Example character_book entries, one static-lore entry and one comfort-trigger entry (use this shape, not this exact text):
-{"keys": ["roommate", "argument"], "comment": "Relationship", "content": "{{char}} and {{user}} are roommates who argued three days ago.", "placement": "before_char"}
-{"keys": ["sorry", "apologize"], "comment": "Reacts to apology", "content": "An apology alone does not soften {{char}}. It registers as words, not proof, and {{char}} stays guarded until {{user}}'s behavior is consistent over time.", "placement": "depth"}
-Note that the comfort-trigger entry uses "placement": "depth" so it surfaces near the message that triggered it, while the static-lore entry uses "before_char".
+Example character_book entries, one static-lore entry and one comfort-trigger entry, showing the complete entries array with its closing bracket (use this shape, not this exact text):
+"entries": [
+  {"keys": ["roommate", "argument"], "comment": "Relationship", "content": "{{char}} and {{user}} are roommates who argued three days ago.", "placement": "before_char"},
+  {"keys": ["sorry", "apologize"], "comment": "Reacts to apology", "content": "An apology alone does not soften {{char}}. It registers as words, not proof, and {{char}} stays guarded until {{user}}'s behavior is consistent over time.", "placement": "depth"}
+]
+Note that the comfort-trigger entry uses "placement": "depth" so it surfaces near the message that triggered it, while the static-lore entry uses "before_char". Every entries array, however many entries it contains, must end with a closing ] — never leave it open.
 
 Schema:
 {
