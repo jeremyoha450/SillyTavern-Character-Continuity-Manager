@@ -148,7 +148,11 @@ export default {
     id: "character-card",
     name: "Full Character Card",
     temperature: 0.75,
-    maxTokens: 8192,
+    // Detailed cards (comfort-trigger lore entries, expanded personality/
+    // post_history_instructions/depth_prompt content) now regularly produce
+    // longer JSON than the old 8192 ceiling allowed, truncating mid-object
+    // (typically inside character_book.entries) and failing parsing.
+    maxTokens: 16384,
     buildMessages(input) {
         return [
             { role: "system", content: SYSTEM_PROMPT },
