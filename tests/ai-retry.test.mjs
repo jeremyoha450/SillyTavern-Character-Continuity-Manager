@@ -43,6 +43,14 @@ test("corrective retry task preserves the original prompt and adds strict JSON c
     assert.match(messages.at(-1).content, /Do not use markdown/);
 });
 
+test("corrective retry task includes the specific parse error when available", () => {
+    const corrected = buildCorrectiveRetryTask(retryTask(), '{"broken":', "Unexpected end of JSON input");
+    const messages = corrected.buildMessages({});
+
+    assert.match(messages.at(-1).content, /Unexpected end of JSON input/);
+    assert.match(messages.at(-1).content, /valid JSON matching the required schema/i);
+});
+
 test("AI execution retries malformed output once and succeeds", async () => {
     const requests = [];
     const responses = ['{"broken":', '{"ready":true}'];

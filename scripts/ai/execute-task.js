@@ -11,6 +11,13 @@ import { normalizeProviderThrownError } from "../provider-error.js";
 import { maybeRecordTrainingExample } from "../training-data.js";
 
 const CORRECTIVE_PROMPT = "Your previous response was invalid or incomplete. Return ONLY valid JSON matching the required schema. Do not explain. Do not use markdown.";
+
+function buildCorrectivePrompt(errorMessage) {
+    const detail = String(errorMessage || "").trim().slice(0, 300);
+    if (!detail) return CORRECTIVE_PROMPT;
+    return `Your previous response was invalid or incomplete: ${detail} Fix that specific mistake and return ONLY valid JSON matching the required schema. Do not explain. Do not use markdown.`;
+}
+
 const RETRYABLE_TASKS = new Set([
     "facts",
     "state",
@@ -44,7 +51,7 @@ export function isRetryableAIOutputError(task, error) {
         .test(String(error?.message || ""));
 }
 
-export function buildCorrectiveRetryTask(task, previousOutput = "") {
+export function buildCorrectiveRetryTask(task, previousOutput = "", errorMessage = "") {
     const previous = String(previousOutput || "").slice(0, 50000);
     return {
         ...task,
@@ -53,7 +60,7 @@ export function buildCorrectiveRetryTask(task, previousOutput = "") {
             return [
                 ...task.buildMessages(input),
                 ...(previous ? [{ role: "assistant", content: previous }] : []),
-                { role: "user", content: CORRECTIVE_PROMPT }
+                { role: "user", content: buildCorrectivePrompt(errorMessage) }
             ];
         }
     };
@@ -237,7 +244,7 @@ export async function executeTask(task, input, metadata = {}, options = {}) {
                     errorType: error?.name || "Error",
                     attempt: attempt + 2
                 });
-                attemptTask = buildCorrectiveRetryTask(task, output || "");
+                attemptTask = buildCorrectiveRetryTask(task, output || "", error?.message || "");
                 continue;
             }
 

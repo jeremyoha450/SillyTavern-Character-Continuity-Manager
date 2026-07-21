@@ -1,3 +1,5 @@
+import { debugLog } from "../../debug-logger.js";
+
 function clean(text) {
     return String(text || "")
         .trim()
@@ -90,6 +92,145 @@ function candidates(source) {
     return [...new Set(values)].flatMap(value => [value, removeTrailingCommas(value)]);
 }
 
+const JSON_ESCAPES = {
+    '"': '"', "\\": "\\", "/": "/",
+    b: "\b", f: "\f", n: "\n", r: "\r", t: "\t"
+};
+
+// Reads one JSON string literal starting at a '"' and decodes its escapes
+// (rather than merely stripping the backslash), so recovered fragments keep
+// real newlines and quotes instead of the literal escape letter.
+function readJsonString(text, start) {
+    if (text[start] !== '"') return null;
+    let index = start + 1;
+    let value = "";
+
+    while (index < text.length) {
+        const character = text[index];
+        if (character === "\\") {
+            const next = text[index + 1];
+            if (next === "u") {
+                const hex = text.slice(index + 2, index + 6);
+                if (/^[0-9a-fA-F]{4}$/.test(hex)) {
+                    value += String.fromCharCode(parseInt(hex, 16));
+                    index += 6;
+                    continue;
+                }
+            }
+            value += JSON_ESCAPES[next] !== undefined ? JSON_ESCAPES[next] : (next ?? "");
+            index += 2;
+            continue;
+        }
+        if (character === '"') {
+            return { value, end: index + 1 };
+        }
+        value += character;
+        index++;
+    }
+    return null;
+}
+
+const SCHEMA_KEYS_AFTER_MES_EXAMPLE = new Set([
+    "alternate_greetings", "group_only_greetings", "tags", "creator_notes",
+    "system_prompt", "post_history_instructions", "talkativeness",
+    "depth_prompt", "character_book"
+]);
+
+// A local model sometimes breaks {{user}}: / {{char}}: speaker lines out of
+// the mes_example string into separate top-level keys, e.g. "user:": "..."
+// or "Kim:": (unquoted text), which corrupts the JSON. Detect that specific
+// shape immediately after "mes_example" and fold the stray keys back into
+// the mes_example string as speaker-label lines, then let the caller retry
+// JSON.parse on the result.
+function repairMisplacedSpeakerKeys(text) {
+    const keyMatch = /"mes_example"\s*:\s*/.exec(text);
+    if (!keyMatch) return null;
+
+    const valueStart = keyMatch.index + keyMatch[0].length;
+    const first = readJsonString(text, valueStart);
+    if (!first) return null;
+
+    let cursor = first.end;
+    let combined = first.value;
+    let mergedAny = false;
+
+    for (;;) {
+        let index = cursor;
+        while (/\s/.test(text[index] || "")) index++;
+        if (text[index] !== ",") break;
+        index++;
+        while (/\s/.test(text[index] || "")) index++;
+
+        const key = readJsonString(text, index);
+        if (!key) break;
+        if (SCHEMA_KEYS_AFTER_MES_EXAMPLE.has(key.value)) break;
+        if (!/^[\w{}]{1,40}:$/.test(key.value)) break;
+
+        let afterKey = key.end;
+        while (/\s/.test(text[afterKey] || "")) afterKey++;
+        if (text[afterKey] !== ":") break;
+        afterKey++;
+        while (/\s/.test(text[afterKey] || "")) afterKey++;
+
+        let valueText;
+        let valueEnd;
+
+        if (text[afterKey] === '"') {
+            const value = readJsonString(text, afterKey);
+            if (!value) break;
+            valueText = value.value;
+            valueEnd = value.end;
+        } else {
+            let end = afterKey;
+            let depth = 0;
+            let inQuote = false;
+            let escaped = false;
+            while (end < text.length) {
+                const character = text[end];
+                if (inQuote) {
+                    if (escaped) escaped = false;
+                    else if (character === "\\") escaped = true;
+                    else if (character === '"') inQuote = false;
+                    end++;
+                    continue;
+                }
+                if (character === '"') {
+                    inQuote = true;
+                    end++;
+                    continue;
+                }
+                if (character === "{" || character === "[") depth++;
+                else if (character === "}" || character === "]") {
+                    if (depth === 0) break;
+                    depth--;
+                } else if (character === "," && depth === 0) {
+                    let peek = end + 1;
+                    while (/\s/.test(text[peek] || "")) peek++;
+                    if (text[peek] === '"') break;
+                }
+                end++;
+            }
+            if (end >= text.length) break;
+            valueText = text.slice(afterKey, end).trim();
+            valueEnd = end;
+        }
+
+        const label = key.value.slice(0, -1);
+        combined += `\n${label}: ${valueText}`;
+        cursor = valueEnd;
+        mergedAny = true;
+    }
+
+    if (!mergedAny) return null;
+
+    const escapedValue = combined
+        .replace(/\\/g, "\\\\")
+        .replace(/"/g, '\\"')
+        .replace(/\n/g, "\\n");
+
+    return text.slice(0, valueStart) + `"${escapedValue}"` + text.slice(cursor);
+}
+
 export function parseJsonResponse(text) {
     const source = clean(text);
 
@@ -99,6 +240,26 @@ export function parseJsonResponse(text) {
             return JSON.parse(candidate);
         } catch (error) {
             parseError ||= error;
+        }
+    }
+
+    const repaired = repairMisplacedSpeakerKeys(source);
+    if (repaired) {
+        for (const candidate of candidates(repaired)) {
+            try {
+                const result = JSON.parse(candidate);
+                console.warn(
+                    "[CCM] Merged misplaced speaker-label keys back into mes_example"
+                );
+                debugLog("creator", "response.repaired", {
+                    operation: "parse",
+                    status: "repaired",
+                    errorType: parseError?.name || "Error"
+                });
+                return result;
+            } catch (error) {
+                parseError ||= error;
+            }
         }
     }
 

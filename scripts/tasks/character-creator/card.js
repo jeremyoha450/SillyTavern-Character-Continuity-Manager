@@ -56,6 +56,8 @@ Example mes_example exchange showing held resistance and the canonical dialogue 
 "Being here isn't the same as being sorry. You can stand there all day; it won't change how I feel about last week."
 Note two things: the character does not thank, forgive, or soften toward {{user}} by the end of the exchange, and every action is a parenthetical on its own line while every spoken line is double-quoted on its own line — never "(glances at the cup) One coffee doesn't undo what you said."
 
+mes_example is always exactly ONE JSON string value. Lines starting with {{user}}: or {{char}}: are plain text inside that one string — never create separate JSON object keys such as "user:" or the character's name followed by a colon. The entire multi-turn example, however many exchanges, stays inside the single mes_example string, opened and closed with exactly one pair of quotes.
+
 Example character_book entries, one static-lore entry and one comfort-trigger entry, showing the complete entries array with its closing bracket (use this shape, not this exact text):
 "entries": [
   {"keys": ["roommate", "argument"], "comment": "Relationship", "content": "{{char}} and {{user}} are roommates who argued three days ago.", "placement": "before_char"},
