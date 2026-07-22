@@ -265,6 +265,17 @@ test("character card prompt bans soft/restrained-emotion words when intensity is
     assert.match(cardPrompt, /even a single instance of one of these words contradicts that stated intensity and must be rewritten/);
 });
 
+test("character cast plan prompt carries userBrief intensity into concept, flaw, goal, and setName", () => {
+    const planTask = getTask("character-cast-plan");
+    const planPrompt = planTask.buildMessages({ setting: "A requested event happens." })[0].content;
+
+    assert.match(planPrompt, /INTENSITY FIDELITY/);
+    assert.match(planPrompt, /carry that same intensity and register directly into concept, flaw, goal, and setName/);
+    assert.match(planPrompt, /"simmering," "brittle," "rationalized," "intellectualized," "guarded," or "contained,"/);
+    assert.match(planPrompt, /The Quiet Storm/);
+    assert.match(planPrompt, /do not give the character that negated trait, or a close synonym of it/);
+});
+
 test("character field task parses an AI revision", () => {
     const task = getTask("character-card-field");
     assert.equal(
