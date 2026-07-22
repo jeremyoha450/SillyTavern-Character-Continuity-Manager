@@ -251,6 +251,20 @@ test("character card prompt makes comfort-trigger lorebook entries mandatory whe
     assert.match(cardPrompt, /if resistant traits appear anywhere in concept\/flaw, personality, or post_history_instructions, character_book\.entries includes the comfort-trigger entries required above/);
 });
 
+test("character card prompt bans soft/restrained-emotion words when intensity is heavy or overt", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /This applies at the word level, not only the overall framing/);
+    assert.match(cardPrompt, /"simmering," "brittle," "contained," "quiet," "restrained," "muted," or "subdued"/);
+    assert.match(cardPrompt, /This check must also scan word by word, not just for the overall framing/);
+    assert.match(cardPrompt, /even a single instance of one of these words contradicts that stated intensity and must be rewritten/);
+});
+
 test("character field task parses an AI revision", () => {
     const task = getTask("character-card-field");
     assert.equal(
