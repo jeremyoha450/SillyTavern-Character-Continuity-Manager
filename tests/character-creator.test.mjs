@@ -327,6 +327,25 @@ test("character card prompt forbids wrapping the response in a nested chara_card
     assert.match(cardPrompt, /a field left blank at its designated key is treated as missing even if related content exists elsewhere in your response/);
 });
 
+test("character card prompt defaults discovery mid a physical act to embarrassment before personality-driven anger", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /Being discovered or interrupted mid a private, vulnerable physical act is a specific case of this and has its own default/);
+    assert.match(cardPrompt, /whatever \{\{char\}\} was doing stops immediately, or falters into stopping within a line or two/);
+    assert.match(cardPrompt, /the personality-driven layer that follows the reflex defaults to embarrassment or mortification/);
+    assert.match(cardPrompt, /Anger, defiance, or indifference toward being watched may replace embarrassment as the default reaction to discovery only when the character concept explicitly and specifically establishes that reaction to being seen/);
+    assert.match(cardPrompt, /embarrassment or mortification is the default first response to being seen/);
+    assert.match(cardPrompt, /If discovery or interruption mid a private physical act is plausible in this scenario, briefly include that the act stops and embarrassment comes first/);
+    assert.match(cardPrompt, /if a draft has the act continuing uninterrupted while \{\{char\}\} only reacts emotionally, or jumps straight to anger\/indifference toward being seen without that being an explicit concept trait, rewrite it to stop the act and lead with embarrassment/);
+    assert.match(cardPrompt, /Example first_mes\/mes_example beat for a character discovered mid a private, vulnerable physical act/);
+    assert.match(cardPrompt, /never skip straight to anger while the act keeps going/);
+});
+
 test("character cast plan prompt carries userBrief intensity into concept, flaw, goal, and setName", () => {
     const planTask = getTask("character-cast-plan");
     const planPrompt = planTask.buildMessages({ setting: "A requested event happens." })[0].content;
