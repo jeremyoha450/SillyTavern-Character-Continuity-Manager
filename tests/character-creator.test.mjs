@@ -209,7 +209,10 @@ test("character card prompt requires characters to react instead of looping", ()
     assert.match(cardPrompt, /snapshot of the starting situation, not a loop/);
     assert.match(cardPrompt, /continuing as if \{\{user\}\} weren't there/);
     assert.match(cardPrompt, /"reactions" element/);
-    assert.match(cardPrompt, /first instinct, then what changes, then what \{\{char\}\} does next/);
+    assert.match(cardPrompt, /involuntary reflex/);
+    assert.match(cardPrompt, /does not vary with temperament/);
+    assert.match(cardPrompt, /the reflex always comes first, the personality-driven response always second/);
+    assert.match(cardPrompt, /keeps its involuntary startle reflex before the personality-driven response/);
     assert.match(cardPrompt, /repeated attempts to reach \{\{char\}\} are events \{\{char\}\} registers/);
     assert.match(cardPrompt, /never repeat the same action, state, or description across multiple turns/);
     assert.match(cardPrompt, /react to \{\{user\}\}'s presence and words in character rather than replaying the prior state unchanged/);
