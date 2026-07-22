@@ -221,6 +221,36 @@ test("character card prompt requires characters to react instead of looping", ()
     assert.match(cardPrompt, /never the same folded-arms non-answer turn after turn/);
 });
 
+test("character card prompt keeps personality intensity consistent across sub-fields", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /must carry through unchanged into \[Behaviour\] and \[Speech\]/);
+    assert.match(cardPrompt, /"not performative," "intellectualized," or "not dramatic"/);
+    assert.match(cardPrompt, /- creator_notes:.*Match the intensity \[Core Personality\] establishes/);
+    assert.match(cardPrompt, /never phrase this reminder in a way that softens or moderates a heavily angry or volatile character into calm control/);
+    assert.match(cardPrompt, /four fields softening one stated trait produces a net result far milder than intended/);
+    assert.match(cardPrompt, /Example \[Behaviour\] and \[Speech\] excerpt for a character whose \[Core Personality\] establishes heavy, overt anger/);
+});
+
+test("character card prompt makes comfort-trigger lorebook entries mandatory whenever resistant traits appear in any source", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /Check three sources for resistant traits.*the plan's concept, flaw, or goal; the generated personality; and the generated post_history_instructions/);
+    assert.match(cardPrompt, /the conditional entries are mandatory, not optional/);
+    assert.match(cardPrompt, /a trait established anywhere still applies/);
+    assert.match(cardPrompt, /if resistant traits appear anywhere in concept\/flaw, personality, or post_history_instructions, character_book\.entries includes the comfort-trigger entries required above/);
+});
+
 test("character field task parses an AI revision", () => {
     const task = getTask("character-card-field");
     assert.equal(
