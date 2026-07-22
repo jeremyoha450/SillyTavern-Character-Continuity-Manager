@@ -88,6 +88,7 @@ test("character card repairs trailing commas and common array-shaped fields", ()
     const parsed = task.parse(`Output: {
         "name": "Jen",
         "description": "Complete description",
+        "personality": "[Core Personality]\\nWarm",
         "mes_example": ["<START>One", "<START>Two",],
         "character_book": {
             "Jen": [
@@ -116,6 +117,54 @@ Second line"
     assert.equal(parsed.name, "Jen");
     assert.equal(parsed.description, "First line.");
     assert.equal(parsed.personality, "Warm.\nSecond line");
+});
+
+test("character card recovers fields from a nested chara_card_v3 envelope instead of dropping them", () => {
+    const task = getTask("character-card");
+    const parsed = task.parse(JSON.stringify({
+        name: "Kim",
+        description: "",
+        personality: "",
+        data: {
+            name: "Kim",
+            description: "[Identity]\nName: Kim",
+            personality: "[Core Personality]\nSharp-tempered",
+            scenario: "A shared kitchen."
+        }
+    }));
+
+    assert.equal(parsed.description, "[Identity]\nName: Kim");
+    assert.equal(parsed.personality, "[Core Personality]\nSharp-tempered");
+    assert.equal(parsed.scenario, "A shared kitchen.");
+});
+
+test("character card flattens an object-shaped personality field instead of dropping it", () => {
+    const task = getTask("character-card");
+    const parsed = task.parse(JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality: {
+            "Core Personality": "Heavily and overtly angry.",
+            "[Behaviour]": "Raises her voice immediately."
+        }
+    }));
+
+    assert.match(parsed.personality, /\[Core Personality\]\nHeavily and overtly angry\./);
+    assert.match(parsed.personality, /\[Behaviour\]\nRaises her voice immediately\./);
+});
+
+test("character card treats an empty personality field as a failed generation", () => {
+    const task = getTask("character-card");
+
+    assert.throws(
+        () => task.parse(JSON.stringify({
+            name: "Kim",
+            description: "[Identity]\nName: Kim",
+            personality: "",
+            post_history_instructions: "Kim's Core Personality anger takes priority."
+        })),
+        /missing its personality field/
+    );
 });
 
 test("character card normalizes text arrays and comma-separated tags and lore keys", () => {
@@ -263,6 +312,19 @@ test("character card prompt bans soft/restrained-emotion words when intensity is
     assert.match(cardPrompt, /"simmering," "brittle," "contained," "quiet," "restrained," "muted," or "subdued"/);
     assert.match(cardPrompt, /This check must also scan word by word, not just for the overall framing/);
     assert.match(cardPrompt, /even a single instance of one of these words contradicts that stated intensity and must be rewritten/);
+});
+
+test("character card prompt forbids wrapping the response in a nested chara_card_v3 envelope", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /do not wrap them in an outer envelope such as \{"spec": "\.\.\.", "data": \{\.\.\.\}\}/);
+    assert.match(cardPrompt, /Never write a field's content in two different places/);
+    assert.match(cardPrompt, /a field left blank at its designated key is treated as missing even if related content exists elsewhere in your response/);
 });
 
 test("character cast plan prompt carries userBrief intensity into concept, flaw, goal, and setName", () => {

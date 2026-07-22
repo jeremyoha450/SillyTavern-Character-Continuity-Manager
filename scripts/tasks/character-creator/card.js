@@ -4,7 +4,7 @@ import {
     stringValue
 } from "./parser.js";
 
-const SYSTEM_PROMPT = `Create one complete, detailed SillyTavern character card from the supplied locked cast plan. Return exactly one valid JSON object without markdown, analysis, reasoning, or a second attempt. Do not place trailing commas before } or ], do not escape a property's closing quote, and represent line breaks inside strings only as \\n. Follow the schema's value types exactly: mes_example is one string, and character_book contains name and entries.
+const SYSTEM_PROMPT = `Create one complete, detailed SillyTavern character card from the supplied locked cast plan. Return exactly one valid JSON object without markdown, analysis, reasoning, or a second attempt. Do not place trailing commas before } or ], do not escape a property's closing quote, and represent line breaks inside strings only as \\n. Follow the schema's value types exactly: mes_example is one string, and character_book contains name and entries. Return the schema's keys directly at the top level of that one object, exactly as shown below — do not wrap them in an outer envelope such as {"spec": "...", "data": {...}}, which is the shape of a finished exported card file, not of this response. Never write a field's content in two different places (for example once at the top level and again inside a nested object): each field has exactly one designated key, and its content must be written there once, in full — a field left blank at its designated key is treated as missing even if related content exists elsewhere in your response.
 
 Keep all facts consistent with the plan. authoritativeStartingSituation and authoritativeUserRole are the highest-priority locked facts and override any conflicting inference or wording elsewhere in the plan. The plan's sharedScenario, userRole, selected character age, gender, species, appearance, userBrief, and personalScenario are also mandatory facts—not suggestions. Never invent a different relationship to {{user}}: for example, do not turn a husband/wife relationship into father/daughter, parent/child, sibling, stranger, or another role. Do not use dialogue terms, narration labels, or relationship words that contradict authoritativeUserRole or the selected character's connectionToUser; if {{user}} is the husband, never call them Dad, Father, parent, brother, stranger, or similar. If the selected character's age is 18 or older, describe them as an adult woman/man/person as appropriate; never call them pre-adolescent, child, minor, little girl/boy, or otherwise imply they are underage. Copy concrete appearance details faithfully into the stable description; never replace hair, eyes, skin, height, body type, face, usual clothing, or distinctive features with invented alternatives. Preserve every explicitly requested starting event, action, sequence, clothing state, nudity state, and outcome without euphemizing, omitting, reversing, or substituting it. Turn the plan into polished, immersive prose: expand rather than quote the user's brief or repeat it nearly word-for-word. The scenario field must state those concrete circumstances clearly while adding setting, atmosphere, character state, and immediate possibilities. The first_mes must begin at the requested starting moment, carry the specified event through its stated outcome when that outcome occurs immediately, and then leave room for {{user}} to respond. Write from this character's perspective. Relationships must describe feelings, history, tensions, trust, misconceptions, and behaviour—not merely labels.
 
@@ -97,8 +97,62 @@ Schema:
   }
 }`;
 
+function isBlankValue(value) {
+    if (value === undefined || value === null) return true;
+    if (typeof value === "string") return value.trim() === "";
+    if (Array.isArray(value)) return value.length === 0;
+    if (typeof value === "object") return Object.keys(value).length === 0;
+    return false;
+}
+
+// A model occasionally wraps its whole response in the real chara_card_v3
+// file envelope ({"spec": ..., "data": {...fields...}}) instead of the flat
+// schema this task requests, apparently pattern-matching real exported card
+// files it has seen. When that happens a field can end up populated only
+// inside the nested "data" object while the flat top-level key this parser
+// reads is left blank, silently dropping content that genuinely exists in
+// the response. Recover any field the top level left blank from an
+// identically-named key in a nested "data" object before parsing further.
+function mergeEnvelope(raw) {
+    const nested = raw?.data && typeof raw.data === "object" && !Array.isArray(raw.data)
+        ? raw.data
+        : null;
+    if (!nested) return raw;
+
+    const merged = { ...raw };
+    for (const key of Object.keys(nested)) {
+        if (isBlankValue(merged[key])) merged[key] = nested[key];
+    }
+    return merged;
+}
+
+// A model sometimes returns a text field (most often personality) as a
+// nested object keyed by its section labels (e.g. {"Core Personality": "...",
+// "Behaviour": "..."}) instead of one flat string, again mirroring
+// bracket-labeled sections as if they were separate object keys. Flatten
+// that shape back into the "[Label]\ntext" paragraphs the schema expects
+// instead of silently losing the content.
+function flattenTextValue(value) {
+    if (typeof value === "string") return value.trim();
+    if (Array.isArray(value)) {
+        return value.map(flattenTextValue).filter(Boolean).join("\n\n");
+    }
+    if (value && typeof value === "object") {
+        return Object.entries(value)
+            .map(([key, entry]) => {
+                const text = flattenTextValue(entry);
+                if (!text) return "";
+                const label = key.trim();
+                return `${/^\[.*\]$/.test(label) ? label : `[${label}]`}\n${text}`;
+            })
+            .filter(Boolean)
+            .join("\n\n");
+    }
+    return "";
+}
+
 function parse(text) {
-    const data = parseJsonResponse(text);
+    const data = mergeEnvelope(parseJsonResponse(text));
     const name = stringValue(data.name);
     const book = data.character_book && typeof data.character_book === "object"
         ? data.character_book
@@ -108,19 +162,22 @@ function parse(text) {
     const bookEntries = Array.isArray(book.entries)
         ? book.entries
         : namedBook?.[1] || [];
-    const textField = value => Array.isArray(value)
-        ? stringArray(value).join("\n\n")
-        : stringValue(value);
+    const textField = flattenTextValue;
 
     if (!name || !textField(data.description)) {
         throw new Error("The generated card is missing its name or description.");
+    }
+
+    const personality = textField(data.personality);
+    if (!personality) {
+        throw new Error("The generated card is missing its personality field.");
     }
 
     return {
         name,
         nickname: stringValue(data.nickname),
         description: textField(data.description),
-        personality: textField(data.personality),
+        personality,
         scenario: textField(data.scenario),
         first_mes: textField(data.first_mes),
         mes_example: textField(data.mes_example),
