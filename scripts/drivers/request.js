@@ -1,6 +1,6 @@
 import { CCMProviderError } from "../provider-error.js";
 
-export const DEFAULT_PROVIDER_TIMEOUT_MS = 60_000;
+export const DEFAULT_PROVIDER_TIMEOUT_MS = 300_000;
 
 export async function fetchWithTimeout(url, options = {}, timeoutMs = DEFAULT_PROVIDER_TIMEOUT_MS) {
     const controller = new AbortController();
