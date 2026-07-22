@@ -198,6 +198,26 @@ test("character generation prompts require the exact starting scenario", () => {
     assert.match(cardPrompt, /naked from the waist up and down/);
 });
 
+test("character card prompt requires characters to react instead of looping", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /snapshot of the starting situation, not a loop/);
+    assert.match(cardPrompt, /continuing as if \{\{user\}\} weren't there/);
+    assert.match(cardPrompt, /"reactions" element/);
+    assert.match(cardPrompt, /first instinct, then what changes, then what \{\{char\}\} does next/);
+    assert.match(cardPrompt, /repeated attempts to reach \{\{char\}\} are events \{\{char\}\} registers/);
+    assert.match(cardPrompt, /never repeat the same action, state, or description across multiple turns/);
+    assert.match(cardPrompt, /react to \{\{user\}\}'s presence and words in character rather than replaying the prior state unchanged/);
+    assert.match(cardPrompt, /CONSISTENCY CHECK/);
+    assert.match(cardPrompt, /rewrite the offending field before finalizing/);
+    assert.match(cardPrompt, /never the same folded-arms non-answer turn after turn/);
+});
+
 test("character field task parses an AI revision", () => {
     const task = getTask("character-card-field");
     assert.equal(
