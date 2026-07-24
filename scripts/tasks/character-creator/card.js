@@ -158,6 +158,26 @@ function flattenTextValue(value) {
     return "";
 }
 
+// JSON repair on a malformed response can leave a stray brace from the
+// surrounding object inside a prose string (previously seen as a bare "}"
+// leaking into [Behaviour] and post_history_instructions text). Remove only
+// braces with no matching counterpart, so balanced pairs — most importantly
+// the {{user}}/{{char}} macros — pass through untouched.
+function stripUnmatchedBraces(text) {
+    const drop = new Set();
+    const open = [];
+    for (let index = 0; index < text.length; index++) {
+        if (text[index] === "{") open.push(index);
+        else if (text[index] === "}") {
+            if (open.length) open.pop();
+            else drop.add(index);
+        }
+    }
+    for (const index of open) drop.add(index);
+    if (!drop.size) return text;
+    return [...text].filter((_, index) => !drop.has(index)).join("").trim();
+}
+
 function parse(text) {
     const data = mergeEnvelope(parseJsonResponse(text));
     const name = stringValue(data.name);
@@ -169,7 +189,7 @@ function parse(text) {
     const bookEntries = Array.isArray(book.entries)
         ? book.entries
         : namedBook?.[1] || [];
-    const textField = flattenTextValue;
+    const textField = value => stripUnmatchedBraces(flattenTextValue(value));
 
     if (!name || !textField(data.description)) {
         throw new Error("The generated card is missing its name or description.");
@@ -189,9 +209,9 @@ function parse(text) {
         first_mes: textField(data.first_mes),
         mes_example: textField(data.mes_example),
         alternate_greetings:
-            stringArray(data.alternate_greetings),
+            stringArray(data.alternate_greetings).map(stripUnmatchedBraces).filter(Boolean),
         group_only_greetings:
-            stringArray(data.group_only_greetings),
+            stringArray(data.group_only_greetings).map(stripUnmatchedBraces).filter(Boolean),
         tags: Array.isArray(data.tags)
             ? stringArray(data.tags)
             : stringValue(data.tags).split(",").map(value => value.trim()).filter(Boolean),
@@ -212,7 +232,7 @@ function parse(text) {
                         ? stringArray(entry.keys)
                         : stringValue(entry?.keys).split(",").map(value => value.trim()).filter(Boolean),
                     comment: stringValue(entry?.comment),
-                    content: stringValue(entry?.content),
+                    content: stripUnmatchedBraces(stringValue(entry?.content)),
                     placement: stringValue(entry?.placement) === "depth" ? "depth" : "before_char"
                 })).filter(entry => entry.content)
         }

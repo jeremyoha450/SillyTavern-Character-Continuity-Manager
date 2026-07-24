@@ -153,6 +153,41 @@ test("character card flattens an object-shaped personality field instead of drop
     assert.match(parsed.personality, /\[Behaviour\]\nRaises her voice immediately\./);
 });
 
+test("character card strips stray unmatched braces from prose fields but keeps macros", () => {
+    const task = getTask("character-card");
+    const parsed = task.parse(JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality: "[Behaviour]\nShe slams doors when {{user}} pushes a nerve.\n}",
+        post_history_instructions: "}\n{{char}}'s anger takes priority over what {{user}} wants.",
+        alternate_greetings: ["(She looks up.)\n\"What?\"\n}"],
+        character_book: {
+            name: "Kim Lore",
+            entries: [{ keys: ["sorry"], content: "An apology does not soften {{char}}.}" }]
+        }
+    }));
+
+    assert.equal(parsed.personality, "[Behaviour]\nShe slams doors when {{user}} pushes a nerve.");
+    assert.equal(parsed.post_history_instructions, "{{char}}'s anger takes priority over what {{user}} wants.");
+    assert.equal(parsed.alternate_greetings[0], "(She looks up.)\n\"What?\"");
+    assert.equal(parsed.character_book.entries[0].content, "An apology does not soften {{char}}.");
+});
+
+test("character card flattens unknown personality section keys without dropping content", () => {
+    const task = getTask("character-card");
+    const parsed = task.parse(JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality: {
+            "Core Personality": "Heavily and overtly angry.",
+            "Behaviour Insight": "Her volume rises before her words catch up."
+        }
+    }));
+
+    assert.match(parsed.personality, /\[Core Personality\]\nHeavily and overtly angry\./);
+    assert.match(parsed.personality, /\[Behaviour Insight\]\nHer volume rises before her words catch up\./);
+});
+
 test("character card treats an empty personality field as a failed generation", () => {
     const task = getTask("character-card");
 
