@@ -355,6 +355,9 @@ test("character cast plan prompt carries userBrief intensity into concept, flaw,
     assert.match(planPrompt, /"simmering," "brittle," "rationalized," "intellectualized," "guarded," or "contained,"/);
     assert.match(planPrompt, /The Quiet Storm/);
     assert.match(planPrompt, /do not give the character that negated trait, or a close synonym of it/);
+    assert.match(planPrompt, /Watch the goal field especially/);
+    assert.match(planPrompt, /do not default a heavily angry character's goal to calming down, finding peace, learning to control their temper/);
+    assert.match(planPrompt, /with the stated temperament as how they pursue it, not what they are trying to escape/);
 });
 
 test("character field task parses an AI revision", () => {
