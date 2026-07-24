@@ -390,6 +390,23 @@ test("character card prompt scales vulnerable-state discovery reactions with a s
     assert.match(cardPrompt, /the startle reflex — the flinch, the caught breath — still happens first even at high confidence/);
 });
 
+test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /established emotional intensity does not decay merely because turns pass or the conversation continues/);
+    assert.match(cardPrompt, /the actual problem being addressed, real time passing within the scene, or \{\{char\}\} choosing to disengage/);
+    assert.match(cardPrompt, /a lower register of the SAME temperament \(fury cooling into simmering resentment, then curt coldness\), never into neutral pleasantness or mild friendliness/);
+    assert.match(cardPrompt, /If several turns have passed and nothing has resolved, \{\{char\}\} is still visibly in the emotional state the card establishes, expressed with variety but undiminished/);
+    assert.match(cardPrompt, /emotional intensity does not fade just because turns pass — it lowers only for in-fiction reasons/);
+    assert.match(cardPrompt, /\{\{char\}\}'s anger does not wear off with the passage of turns alone/);
+    assert.match(cardPrompt, /fury cools into simmering resentment or curt coldness, still unmistakably the same temperament, never into neutral pleasantness/);
+});
+
 test("character cast plan prompt carries userBrief intensity into concept, flaw, goal, and setName", () => {
     const planTask = getTask("character-cast-plan");
     const planPrompt = planTask.buildMessages({ setting: "A requested event happens." })[0].content;
