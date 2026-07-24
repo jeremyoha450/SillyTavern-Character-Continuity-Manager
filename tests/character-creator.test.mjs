@@ -362,7 +362,7 @@ test("character card prompt forbids wrapping the response in a nested chara_card
     assert.match(cardPrompt, /a field left blank at its designated key is treated as missing even if related content exists elsewhere in your response/);
 });
 
-test("character card prompt defaults discovery mid a physical act to embarrassment before personality-driven anger", () => {
+test("character card prompt scales vulnerable-state discovery reactions with a stated confidence level", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
         plan: { sharedScenario: "A requested event happens." },
@@ -370,15 +370,24 @@ test("character card prompt defaults discovery mid a physical act to embarrassme
         authoritativeUserRole: "Husband"
     })[0].content;
 
-    assert.match(cardPrompt, /Being discovered or interrupted mid a private, vulnerable physical act is a specific case of this and has its own default/);
-    assert.match(cardPrompt, /whatever \{\{char\}\} was doing stops immediately, or falters into stopping within a line or two/);
-    assert.match(cardPrompt, /the personality-driven layer that follows the reflex defaults to embarrassment or mortification/);
-    assert.match(cardPrompt, /Anger, defiance, or indifference toward being watched may replace embarrassment as the default reaction to discovery only when the character concept explicitly and specifically establishes that reaction to being seen/);
-    assert.match(cardPrompt, /embarrassment or mortification is the default first response to being seen/);
-    assert.match(cardPrompt, /If discovery or interruption mid a private physical act is plausible in this scenario, briefly include that the act stops and embarrassment comes first/);
-    assert.match(cardPrompt, /if a draft has the act continuing uninterrupted while \{\{char\}\} only reacts emotionally, or jumps straight to anger\/indifference toward being seen without that being an explicit concept trait, rewrite it to stop the act and lead with embarrassment/);
-    assert.match(cardPrompt, /Example first_mes\/mes_example beat for a character discovered mid a private, vulnerable physical act/);
+    assert.match(cardPrompt, /derive and explicitly state a confidence level — low, medium, or high — inferred from the concept, flaw, and userBrief/);
+    assert.match(cardPrompt, /self-doubt, shame, or social anxiety indicate low; ordinary adult self-possession indicates medium; brazen, self-assured, exhibitionist-adjacent, or shame-resistant traits indicate high/);
+    assert.match(cardPrompt, /If the brief gives no signal either way, state medium/);
+    assert.match(cardPrompt, /The involuntary startle reflex itself is unconditional at every confidence level — confidence shapes what happens after the reflex, never whether it occurs/);
+    assert.match(cardPrompt, /Caught naked or undressed \(not mid-act\)/);
+    assert.match(cardPrompt, /at high confidence, covering is noticeably less likely — she may stay as she is and react with composure, annoyance, or amusement instead of scrambling/);
+    assert.match(cardPrompt, /Caught mid-act in something private she does not want known/);
+    assert.match(cardPrompt, /at high confidence, stopping and covering are both less likely and she is less likely to order the person out — she may continue deliberately, comment on it, or treat the intrusion as the other person's problem/);
+    assert.match(cardPrompt, /need no separate concept trait/);
+    assert.match(cardPrompt, /never assigned to license nonchalance the character's writing does not support/);
+    assert.match(cardPrompt, /Every version must also name the confidence level stated in \[Core Personality\] and carry its vulnerable-state implications/);
+    assert.match(cardPrompt, /briefly carry the confidence level stated in \[Core Personality\] and its implication/);
+    assert.match(cardPrompt, /a character written as ashamed, self-doubting, or socially anxious cannot be tagged high confidence/);
+    assert.match(cardPrompt, /no high-confidence nonchalance, deliberate continuation, or staying uncovered on a low- or medium-confidence character, and no mandatory scrambling, mortification, or automatic stopping on a high-confidence one/);
+    assert.match(cardPrompt, /Example first_mes\/mes_example beat for a LOW- or MEDIUM-confidence character discovered mid a private, vulnerable physical act/);
     assert.match(cardPrompt, /never skip straight to anger while the act keeps going/);
+    assert.match(cardPrompt, /Example beat for a HIGH-confidence character discovered in the same situation/);
+    assert.match(cardPrompt, /the startle reflex — the flinch, the caught breath — still happens first even at high confidence/);
 });
 
 test("character cast plan prompt carries userBrief intensity into concept, flaw, goal, and setName", () => {
