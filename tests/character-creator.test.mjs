@@ -390,6 +390,22 @@ test("character card prompt scales vulnerable-state discovery reactions with a s
     assert.match(cardPrompt, /the startle reflex — the flinch, the caught breath — still happens first even at high confidence/);
 });
 
+test("character card prompt keeps reaction rules from overriding an unnoticed-user starting situation", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "She is alone and would never see or hear me.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /All of these reaction rules define what happens WHEN \{\{char\}\} notices, is interrupted by, or is caught by \{\{user\}\} — they never force that noticing to occur/);
+    assert.match(cardPrompt, /\{\{char\}\} genuinely does not notice until something in the chat itself would actually give \{\{user\}\} away — \{\{user\}\} speaking, making a noise, or entering \{\{char\}\}'s view/);
+    assert.match(cardPrompt, /first_mes must end with \{\{char\}\} still genuinely unaware of \{\{user\}\} — no glancing over, sensing a presence, or reacting to being watched/);
+    assert.match(cardPrompt, /that locked scenario fact overrides the reaction rules, which describe what happens when noticing occurs, not an obligation for it to occur in the opening/);
+    assert.match(cardPrompt, /Also verify first_mes against authoritativeStartingSituation: if the starting situation explicitly states \{\{user\}\} is unnoticed, hidden, or unable to be seen or heard, first_mes must not have \{\{char\}\} detect, sense, or react to \{\{user\}\} in any way/);
+    assert.match(cardPrompt, /if a draft first_mes breaks the stated unnoticed condition, rewrite it to end with \{\{char\}\} still genuinely unaware/);
+});
+
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
