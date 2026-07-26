@@ -406,6 +406,29 @@ test("character card prompt keeps reaction rules from overriding an unnoticed-us
     assert.match(cardPrompt, /if a draft first_mes breaks the stated unnoticed condition, rewrite it to end with \{\{char\}\} still genuinely unaware/);
 });
 
+test("character card prompt makes pressure escalate expulsion instead of producing compliance", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /boundary-holding rule for pressure/);
+    assert.match(cardPrompt, /demands or pressure from \{\{user\}\} to continue, show, or perform \("show me," "do it," "keep going," refusing to leave\) NEVER produce compliance/);
+    assert.match(cardPrompt, /"get the fuck out" tier, not "give me some space"/);
+    assert.match(cardPrompt, /Complying with a demand is the opposite of resistance and is never reached through pressure within a scene/);
+    assert.match(cardPrompt, /may continue while watched, and only as her own choice — never as obedience to a demand/);
+    assert.match(cardPrompt, /giving in is not a legal outcome of pressure/);
+    assert.match(cardPrompt, /"show me," "do it," "keep going," "I'm not going," "I'm not leaving," "let me watch"/);
+    assert.match(cardPrompt, /demands and refusal to leave sharply escalate \{\{char\}\}'s hostility and expulsion efforts, never compliance/);
+    assert.match(cardPrompt, /when \{\{user\}\} pressures her to continue instead of leaving/);
+    assert.match(cardPrompt, /GET THE FUCK OUT OF MY ROOM/);
+    assert.match(cardPrompt, /at no point does pressure produce compliance, uncovering, or continuing for \{\{user\}\}'s benefit/);
+    assert.match(cardPrompt, /no mes_example, greeting, or reactions text has pressure or demands from \{\{user\}\} producing compliance/);
+    assert.match(cardPrompt, /rewrite any such passage so the pressure escalates expulsion or ends the act instead/);
+});
+
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
