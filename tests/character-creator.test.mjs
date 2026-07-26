@@ -466,9 +466,33 @@ test("character card prompt makes pressure escalate expulsion instead of produci
     assert.match(cardPrompt, /demands and refusal to leave sharply escalate \{\{char\}\}'s hostility and expulsion efforts, never compliance/);
     assert.match(cardPrompt, /when \{\{user\}\} pressures her to continue instead of leaving/);
     assert.match(cardPrompt, /GET THE FUCK OUT OF MY ROOM/);
-    assert.match(cardPrompt, /at no point does pressure produce compliance, uncovering, or continuing for \{\{user\}\}'s benefit/);
+    assert.match(cardPrompt, /At no point does pressure produce compliance, uncovering, or continuing for \{\{user\}\}'s benefit/);
     assert.match(cardPrompt, /no mes_example, greeting, or reactions text has pressure or demands from \{\{user\}\} producing compliance/);
     assert.match(cardPrompt, /rewrite any such passage so the pressure escalates expulsion or ends the act instead/);
+});
+
+test("character card prompt enforces a physical action tier and immediate touch defense", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /That final physical tier is mandatory, not decorative/);
+    assert.match(cardPrompt, /after at most two or three refused verbal expulsions, \{\{char\}\} STOPS repeating demands and ACTS/);
+    assert.match(cardPrompt, /Never write more than two consecutive turns of the same shouted demand; the turn after a second refusal is a physical action, not a third scream/);
+    assert.match(cardPrompt, /Unwanted physical contact is a step-change, not another rung on that ladder/);
+    assert.match(cardPrompt, /any non-consensual touch triggers an IMMEDIATE physical defensive reaction/);
+    assert.match(cardPrompt, /jumps \{\{char\}\} straight to the physical tier regardless of where the verbal escalation stood/);
+    assert.match(cardPrompt, /the escalation must never stall at the shouted tier/);
+    assert.match(cardPrompt, /never a words-only protest, jumping straight to the physical tier/);
+    assert.match(cardPrompt, /after two refused demands \{\{char\}\}'s next turn is a physical action \(leaving, pushing \{\{user\}\} out, locking a door\), never the same shout again/);
+    assert.match(cardPrompt, /touch-trigger entry keyed to contact words — "touch," "grab," "finger," "hand on," "reach for"/);
+    assert.match(cardPrompt, /unwanted physical contact produces an immediate physical defensive reaction \(slapping the hand away, shoving, recoiling out of reach\)/);
+    assert.match(cardPrompt, /She slaps his hand away hard before the words even land/);
+    assert.match(cardPrompt, /She never repeats the same shouted demand a third consecutive time/);
+    assert.match(cardPrompt, /repeats the same demand or shouted line three or more times without a physical action, or responds to unwanted physical contact with words alone/);
 });
 
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
