@@ -146,6 +146,10 @@ test("character card flattens an object-shaped personality field instead of drop
         personality: {
             "Core Personality": "Heavily and overtly angry.",
             "[Behaviour]": "Raises her voice immediately."
+        },
+        character_book: {
+            name: "Kim Lore",
+            entries: [{ keys: ["sorry"], content: "An apology does not soften Kim.", placement: "depth" }]
         }
     }));
 
@@ -181,11 +185,91 @@ test("character card flattens unknown personality section keys without dropping 
         personality: {
             "Core Personality": "Heavily and overtly angry.",
             "Behaviour Insight": "Her volume rises before her words catch up."
+        },
+        character_book: {
+            name: "Kim Lore",
+            entries: [{ keys: ["sorry"], content: "An apology does not soften Kim.", placement: "depth" }]
         }
     }));
 
     assert.match(parsed.personality, /\[Core Personality\]\nHeavily and overtly angry\./);
     assert.match(parsed.personality, /\[Behaviour Insight\]\nHer volume rises before her words catch up\./);
+});
+
+test("character card rejects a high confidence level stated over self-loathing", () => {
+    const task = getTask("character-card");
+    const withPersonality = personality => JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality,
+        character_book: {
+            name: "Kim Lore",
+            entries: [{ keys: ["sorry"], content: "An apology does not soften Kim.", placement: "depth" }]
+        }
+    });
+
+    assert.throws(
+        () => task.parse(withPersonality(
+            "[Core Personality]\nKim is brilliant, highly capable, and operates at a high confidence level. Beneath the polish runs a pervasive self-loathing; she treats vulnerability as weakness and hides every crack behind competence."
+        )),
+        /states a high confidence level while also describing "self-loathing"/
+    );
+
+    const lowStated = task.parse(withPersonality(
+        "[Core Personality]\nKim is brilliant and highly capable, but her confidence level is low: pervasive self-loathing, and she treats vulnerability as weakness."
+    ));
+    assert.match(lowStated.personality, /confidence level is low/);
+
+    const highClean = task.parse(withPersonality(
+        "[Core Personality]\nBrazen and shame-resistant, Kim operates at a high confidence level and is guarded with strangers."
+    ));
+    assert.match(highClean.personality, /high confidence level/);
+});
+
+test("character card requires lore entries when resistant traits are present", () => {
+    const task = getTask("character-card");
+    const withBook = entries => JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality: "[Core Personality]\nOpenly hostile and angry at {{user}}, distrustful of kindness.",
+        post_history_instructions: "Kim stays angry; a single apology changes nothing.",
+        character_book: { name: "Kim Lore", entries }
+    });
+
+    assert.throws(
+        () => task.parse(withBook([])),
+        /resistant traits.*character_book\.entries is empty/
+    );
+
+    const populated = task.parse(withBook([
+        { keys: ["sorry"], content: "An apology does not soften Kim.", placement: "depth" }
+    ]));
+    assert.equal(populated.character_book.entries.length, 1);
+
+    const calm = task.parse(JSON.stringify({
+        name: "Mara",
+        description: "[Identity]\nName: Mara",
+        personality: "[Core Personality]\nWarm, open, and easy to talk to.",
+        character_book: { name: "Mara Lore", entries: [] }
+    }));
+    assert.equal(calm.character_book.entries.length, 0);
+});
+
+test("character card prompt forbids template-dumping other confidence branches into PHI", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /Write it as THIS character's own rules, in declarative sentences about \{\{char\}\}/);
+    assert.match(cardPrompt, /Never paste rules for other confidence levels, never include both the low\/medium and the high branch/);
+    assert.match(cardPrompt, /"\(which \{\{char\}\} is not, but the rule is noted for completeness\)" must never appear/);
+    assert.match(cardPrompt, /verify post_history_instructions references only this character's own derived confidence level/);
+    assert.match(cardPrompt, /template-dumped rather than written for this character/);
+    assert.match(cardPrompt, /each labeled section appears exactly once; never repeat \[Appearance\] or any other section within the description/);
+    assert.match(cardPrompt, /cannot be tagged high confidence no matter how brilliant or capable they are described as being/);
 });
 
 test("character card treats an empty personality field as a failed generation", () => {
@@ -371,7 +455,10 @@ test("character card prompt scales vulnerable-state discovery reactions with a s
     })[0].content;
 
     assert.match(cardPrompt, /derive and explicitly state a confidence level — low, medium, or high — inferred from the concept, flaw, and userBrief/);
-    assert.match(cardPrompt, /self-doubt, shame, or social anxiety indicate low; ordinary adult self-possession indicates medium; brazen, self-assured, exhibitionist-adjacent, or shame-resistant traits indicate high/);
+    assert.match(cardPrompt, /Confidence here means comfort with bodily and social exposure and with being seen in vulnerable states specifically — NOT general competence/);
+    assert.match(cardPrompt, /intelligence, brilliance, capability, professional skill, or workplace self-assurance are not high signals/);
+    assert.match(cardPrompt, /Self-doubt, shame, self-loathing, social anxiety, or treating vulnerability as weakness indicate low; ordinary adult self-possession indicates medium; brazen, exhibitionist-adjacent, or shame-resistant traits toward being seen indicate high/);
+    assert.match(cardPrompt, /Low signals dominate: if the writing contains both capability language \("brilliant," "highly capable"\) and shame or self-loathing language, the derived level is low or medium, never high/);
     assert.match(cardPrompt, /If the brief gives no signal either way, state medium/);
     assert.match(cardPrompt, /The involuntary startle reflex itself is unconditional at every confidence level — confidence shapes what happens after the reflex, never whether it occurs/);
     assert.match(cardPrompt, /Caught naked or undressed \(not mid-act\)/);
@@ -382,7 +469,7 @@ test("character card prompt scales vulnerable-state discovery reactions with a s
     assert.match(cardPrompt, /never assigned to license nonchalance the character's writing does not support/);
     assert.match(cardPrompt, /name the confidence level stated in \[Core Personality\] and carry its vulnerable-state implications/);
     assert.match(cardPrompt, /briefly carry the confidence level stated in \[Core Personality\] and its implication/);
-    assert.match(cardPrompt, /a character written as ashamed, self-doubting, or socially anxious cannot be tagged high confidence/);
+    assert.match(cardPrompt, /a character written as ashamed, self-doubting, self-loathing, or socially anxious cannot be tagged high confidence/);
     assert.match(cardPrompt, /no high-confidence nonchalance, deliberate continuation, or staying uncovered on a low- or medium-confidence character, and no mandatory scrambling, mortification, or automatic stopping on a high-confidence one/);
     assert.match(cardPrompt, /Example first_mes\/mes_example beat for a LOW- or MEDIUM-confidence character discovered mid a private, vulnerable physical act/);
     assert.match(cardPrompt, /never skip straight to anger while the act keeps going/);
