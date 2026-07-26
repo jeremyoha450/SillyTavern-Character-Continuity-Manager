@@ -435,6 +435,62 @@ test("character cast plan prompt carries userBrief intensity into concept, flaw,
     assert.match(planPrompt, /Watch the goal field especially/);
     assert.match(planPrompt, /do not default a heavily angry character's goal to calming down, finding peace, learning to control their temper/);
     assert.match(planPrompt, /with the stated temperament as how they pursue it, not what they are trying to escape/);
+    assert.match(planPrompt, /this is also a word-level rule, not only a framing rule/);
+    assert.match(planPrompt, /"simmering," "brittle," "contained," "quiet," "restrained," "muted," "subdued," "silent," or similar/);
+    assert.match(planPrompt, /"A constant state of simmering rage" fails a brief that says "very angry, always angry"/);
+});
+
+test("cast plan rejects soft-framed fields for an overtly angry brief", () => {
+    const task = getTask("character-cast-plan");
+    const planWith = overrides => JSON.stringify({
+        setName: "Kitchen Table War",
+        sharedScenario: "A tense shared home",
+        cast: [{
+            name: "Kim",
+            userBrief: "She is very angry at her husband — always angry, and openly so.",
+            concept: "A wife whose fury is loud, immediate, and unhidden",
+            goal: "Make her husband face what he did",
+            flaw: "Explosive temper that torches every conversation",
+            ...overrides
+        }]
+    });
+
+    assert.throws(
+        () => task.parse(planWith({ concept: "A wife living in a constant state of simmering rage" })),
+        /softens an explicitly intense userBrief.*Kim's concept uses "simmering"/
+    );
+    assert.throws(
+        () => task.parse(planWith({ flaw: "Keeps her anger quiet and contained until it leaks out" })),
+        /Kim's flaw uses "quiet"/
+    );
+    assert.throws(
+        () => task.parse(JSON.stringify({
+            setName: "The Quiet Storm",
+            cast: [{
+                name: "Kim",
+                userBrief: "Very angry, always angry.",
+                concept: "A loudly furious wife",
+                goal: "Win the argument",
+                flaw: "Explosive temper"
+            }]
+        })),
+        /setName uses "Quiet"/
+    );
+
+    const clean = task.parse(planWith({}));
+    assert.equal(clean.cast[0].concept, "A wife whose fury is loud, immediate, and unhidden");
+
+    const calmBrief = task.parse(JSON.stringify({
+        setName: "Quiet Mornings",
+        cast: [{
+            name: "Mara",
+            userBrief: "A gentle, soft-spoken painter.",
+            concept: "A quiet, restrained artist",
+            goal: "Open a gallery",
+            flaw: "Too passive"
+        }]
+    }));
+    assert.equal(calmBrief.cast[0].concept, "A quiet, restrained artist");
 });
 
 test("character field task parses an AI revision", () => {

@@ -11,7 +11,7 @@ Return only valid JSON. Do not use markdown.
 Create exactly the requested number of distinct card subjects. Treat the user's shared setting, starting situation, user role, requirements, and card-type guidance as authoritative. Preserve explicitly requested events, their order, character actions, current clothing or nudity state, relationship to the user, and stated outcomes in sharedScenario; do not replace them with a vaguer or safer alternative. Usual clothing is a stable wardrobe preference only and must never alter the current clothing or nudity state in the starting situation. If the starting situation says the character is naked, nude, or completely naked, phrase that naturally; never write awkward constructions such as "naked from the waist up and down." Never invent a family or social relationship that conflicts with the supplied user role or character brief. Rewrite the user's wording into polished, natural prose and expand it with useful setting, atmosphere, and immediate dramatic context—do not merely quote or lightly rephrase the input. Connected characters must have reciprocal but perspective-sensitive relationships. Give every embodied character a clear dramatic function, personal goal, flaw, history, connection to the user, and relationship with every other cast member. For open-world, narrator/scenario, or tool/assistant cards, adapt these cast fields to the world's, narrator's, scenario's, or tool's function instead of inventing an embodied person. Avoid generic duplicates and do not swap traits between characters.
 
 INTENSITY FIDELITY
-When a character's userBrief states an explicit intensity, temperament, or emotional register — for example "heavily," "overtly," "explosively," or "short-fused" — carry that same intensity and register directly into concept, flaw, goal, and setName rather than reinterpreting or moderating it into a calmer, more restrained, rationalized, or intellectualized framing. Never independently soften a brief that states heavy or overt anger into words like "simmering," "brittle," "rationalized," "intellectualized," "guarded," or "contained," and never invent a softer, whimsical, or ambiguous setName or cast title (for example "The Quiet Storm") that undercuts an explicitly stated intensity. If userBrief explicitly negates a trait (for example "not withdrawn" or "not simmering quietly"), do not give the character that negated trait, or a close synonym of it, anywhere in concept, flaw, or goal. Watch the goal field especially: do not default a heavily angry character's goal to calming down, finding peace, learning to control their temper, being understood, or otherwise resolving or minimizing the stated trait — that quietly converts the trait into a problem the story exists to fix. Unless userBrief itself frames the intensity as something the character wants to change, write a goal the character actually pursues as the person they are (something they want to get, win, prove, protect, or make happen), with the stated temperament as how they pursue it, not what they are trying to escape.
+When a character's userBrief states an explicit intensity, temperament, or emotional register — for example "heavily," "overtly," "explosively," or "short-fused" — carry that same intensity and register directly into concept, flaw, goal, and setName rather than reinterpreting or moderating it into a calmer, more restrained, rationalized, or intellectualized framing. Never independently soften a brief that states heavy or overt anger into words like "simmering," "brittle," "rationalized," "intellectualized," "guarded," or "contained," and never invent a softer, whimsical, or ambiguous setName or cast title (for example "The Quiet Storm") that undercuts an explicitly stated intensity. If userBrief explicitly negates a trait (for example "not withdrawn" or "not simmering quietly"), do not give the character that negated trait, or a close synonym of it, anywhere in concept, flaw, or goal. Watch the goal field especially: do not default a heavily angry character's goal to calming down, finding peace, learning to control their temper, being understood, or otherwise resolving or minimizing the stated trait — that quietly converts the trait into a problem the story exists to fix. Unless userBrief itself frames the intensity as something the character wants to change, write a goal the character actually pursues as the person they are (something they want to get, win, prove, protect, or make happen), with the stated temperament as how they pursue it, not what they are trying to escape. When userBrief states heavy, overt, or explosive anger or intensity, this is also a word-level rule, not only a framing rule: concept, flaw, goal, and setName must not use softening or restraint words — "simmering," "brittle," "contained," "quiet," "restrained," "muted," "subdued," "silent," or similar — as the framing for that temperament. "A constant state of simmering rage" fails a brief that says "very angry, always angry"; "openly, loudly angry at any provocation" carries it. Before returning the JSON, re-read those four fields for these words and rewrite any field that uses one to frame the stated temperament.
 
 Schema:
 {
@@ -48,6 +48,46 @@ Schema:
     }
   ]
 }`;
+
+// Same soft/restrained-emotion word list card.js's consistency check scans
+// for, plus "silent": these words quietly reframe an explicitly overt
+// temperament into a restrained one.
+const SOFT_FRAMING_WORDS =
+    /\b(?:simmering|brittle|contained|quiet(?:ly)?|restrained|muted|subdued|silent(?:ly)?)\b/i;
+
+// Briefs that state overt intensity in so many words — "very angry",
+// "always angry", "explosively angry", "short-fused" — rather than leaving
+// temperament to inference.
+const OVERT_INTENSITY_BRIEF =
+    /\b(?:heavily|overtly|explosively|very|always|constantly|extremely|openly)\b[\s\w,'-]{0,40}?\b(?:angry|anger|furious|fury|rage|raging|volatile)\b|\bshort-?fused\b|\bhot-?tempered\b/i;
+
+// The prompt-level INTENSITY FIDELITY rule alone did not stop the planner
+// softening "very angry... always angry" briefs into "simmering rage"
+// concepts — the same failure card generation had before its word-level
+// check. Enforce the lexical rule on the output too: a thrown error here
+// carries through the driver layer with the raw output attached, which
+// triggers the standard one-shot corrective retry instead of handing the
+// user a soft-framed plan to fix manually.
+function assertIntensityCarried(plan) {
+    const overtCast = plan.cast.filter(item => OVERT_INTENSITY_BRIEF.test(item.userBrief));
+    if (!overtCast.length) return;
+
+    const offending = [];
+    for (const item of overtCast) {
+        for (const field of ["concept", "flaw", "goal"]) {
+            const match = item[field].match(SOFT_FRAMING_WORDS);
+            if (match) offending.push(`${item.name}'s ${field} uses "${match[0]}"`);
+        }
+    }
+    const setNameMatch = plan.setName.match(SOFT_FRAMING_WORDS);
+    if (setNameMatch) offending.push(`setName uses "${setNameMatch[0]}"`);
+
+    if (offending.length) {
+        throw new Error(
+            `The cast plan softens an explicitly intense userBrief: ${offending.join("; ")} despite the brief stating overt anger. Rewrite the flagged fields to carry the stated intensity instead of restraint framing.`
+        );
+    }
+}
 
 function parse(text) {
     const data = parseJsonResponse(text);
@@ -89,7 +129,7 @@ function parse(text) {
         throw new Error("The cast plan did not contain any characters.");
     }
 
-    return {
+    const plan = {
         setName: stringValue(data.setName),
         sharedWorld: stringValue(data.sharedWorld),
         sharedScenario: stringValue(data.sharedScenario),
@@ -98,6 +138,8 @@ function parse(text) {
         sharedHistory: stringArray(data.sharedHistory),
         cast
     };
+    assertIntensityCarried(plan);
+    return plan;
 }
 
 export default {
