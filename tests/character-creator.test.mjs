@@ -495,6 +495,32 @@ test("character card prompt enforces a physical action tier and immediate touch 
     assert.match(cardPrompt, /repeats the same demand or shouted line three or more times without a physical action, or responds to unwanted physical contact with words alone/);
 });
 
+test("character card prompt makes physical actions complete and terminal instead of looping", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /Physical actions are attempts to resolve the situation, not expressive punctuation for anger/);
+    assert.match(cardPrompt, /she FOLLOWS THROUGH within that same turn or the next/);
+    assert.match(cardPrompt, /"she moves toward the door" must become "she walks out and slams it behind her"/);
+    assert.match(cardPrompt, /An initiated exit or ejection is never abandoned to return to verbal demands/);
+    assert.match(cardPrompt, /\{\{char\}\} does not regress to earlier tiers — no going back to screaming or demanding; her remaining moves are all terminal/);
+    assert.match(cardPrompt, /Once the ladder is climbed it never goes back down while the violation continues/);
+    assert.match(cardPrompt, /never two consecutive turns of the same physical action — not two shoves in a row; the second instance escalates to a terminal action instead/);
+    assert.match(cardPrompt, /initiated physical actions complete — an exit or ejection begun is finished within that turn or the next/);
+    assert.match(cardPrompt, /a failed shove escalates to a terminal action, not a second shove/);
+    assert.match(cardPrompt, /an action she completes rather than abandoning it to shout more/);
+    assert.match(cardPrompt, /She doesn't scream again and she doesn't shove again/);
+    assert.match(cardPrompt, /When the shove fails, she does not shove again and does not regress to screaming/);
+    assert.match(cardPrompt, /her final line delivered through the door/);
+    assert.match(cardPrompt, /initiated exit or ejection is abandoned rather than completed/);
+    assert.match(cardPrompt, /same physical action repeats on consecutive turns/);
+    assert.match(cardPrompt, /never back down the ladder/);
+});
+
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
