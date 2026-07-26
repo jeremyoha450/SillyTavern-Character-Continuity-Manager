@@ -521,6 +521,28 @@ test("character card prompt makes physical actions complete and terminal instead
     assert.match(cardPrompt, /never back down the ladder/);
 });
 
+test("character card prompt makes self-removal the terminal state and requires covering beats present", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /SELF-REMOVAL is the primary terminal state, because it needs only \{\{char\}\}'s own actions/);
+    assert.match(cardPrompt, /ejecting \{\{user\}\} requires narrating \{\{user\}\}'s movement, which the roleplaying model will rightly avoid doing/);
+    assert.match(cardPrompt, /After at most two failed physical ejection attempts, \{\{char\}\}'s next turn is leaving/);
+    assert.match(cardPrompt, /the turn ENDS with her gone — the bathroom door locking, the front door slamming, a final line thrown from beyond the doorway/);
+    assert.match(cardPrompt, /ending the scene's location is a valid and correct outcome, and remaining in the room to continue struggling indefinitely is not/);
+    assert.match(cardPrompt, /after at most two failed attempts to eject \{\{user\}\}, \{\{char\}\}'s next turn is self-removal/);
+    assert.match(cardPrompt, /verify presence, not just absence of contradiction/);
+    assert.match(cardPrompt, /must actually contain the covering response and the immediate physical touch-defense/);
+    assert.match(cardPrompt, /narrated as "makes no move to cover herself," or answering unwanted touch with words alone like "Stop doing that!"/);
+    assert.match(cardPrompt, /rewrite or regenerate any field where the covering or touch-defense is absent or contradicted/);
+    assert.match(cardPrompt, /the covering persists through every beat — the sheet stays clutched, clamped, then wrapped from the first line to the exit/);
+    assert.match(cardPrompt, /the scene resolves by self-removal: at the end of her final turn she is gone/);
+});
+
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
