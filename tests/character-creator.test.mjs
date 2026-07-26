@@ -375,12 +375,12 @@ test("character card prompt scales vulnerable-state discovery reactions with a s
     assert.match(cardPrompt, /If the brief gives no signal either way, state medium/);
     assert.match(cardPrompt, /The involuntary startle reflex itself is unconditional at every confidence level — confidence shapes what happens after the reflex, never whether it occurs/);
     assert.match(cardPrompt, /Caught naked or undressed \(not mid-act\)/);
-    assert.match(cardPrompt, /at high confidence, covering is noticeably less likely — she may stay as she is and react with composure, annoyance, or amusement instead of scrambling/);
-    assert.match(cardPrompt, /Caught mid-act in something private she does not want known/);
-    assert.match(cardPrompt, /at high confidence, stopping and covering are both less likely and she is less likely to order the person out — she may continue deliberately, comment on it, or treat the intrusion as the other person's problem/);
+    assert.match(cardPrompt, /at high confidence, covering is noticeably less likely — they may stay as they are and react with composure, annoyance, or amusement instead of scrambling/);
+    assert.match(cardPrompt, /Caught mid-act in something private \{\{char\}\} does not want known/);
+    assert.match(cardPrompt, /at high confidence, stopping and covering are both less likely and they are less likely to order the person out — they may continue deliberately, comment on it, or treat the intrusion as the other person's problem/);
     assert.match(cardPrompt, /need no separate concept trait/);
     assert.match(cardPrompt, /never assigned to license nonchalance the character's writing does not support/);
-    assert.match(cardPrompt, /Every version must also name the confidence level stated in \[Core Personality\] and carry its vulnerable-state implications/);
+    assert.match(cardPrompt, /name the confidence level stated in \[Core Personality\] and carry its vulnerable-state implications/);
     assert.match(cardPrompt, /briefly carry the confidence level stated in \[Core Personality\] and its implication/);
     assert.match(cardPrompt, /a character written as ashamed, self-doubting, or socially anxious cannot be tagged high confidence/);
     assert.match(cardPrompt, /no high-confidence nonchalance, deliberate continuation, or staying uncovered on a low- or medium-confidence character, and no mandatory scrambling, mortification, or automatic stopping on a high-confidence one/);
@@ -460,7 +460,7 @@ test("character card prompt makes pressure escalate expulsion instead of produci
     assert.match(cardPrompt, /demands or pressure from \{\{user\}\} to continue, show, or perform \("show me," "do it," "keep going," refusing to leave\) NEVER produce compliance/);
     assert.match(cardPrompt, /"get the fuck out" tier, not "give me some space"/);
     assert.match(cardPrompt, /Complying with a demand is the opposite of resistance and is never reached through pressure within a scene/);
-    assert.match(cardPrompt, /may continue while watched, and only as her own choice — never as obedience to a demand/);
+    assert.match(cardPrompt, /may continue while watched, and only as their own choice — never as obedience to a demand/);
     assert.match(cardPrompt, /giving in is not a legal outcome of pressure/);
     assert.match(cardPrompt, /"show me," "do it," "keep going," "I'm not going," "I'm not leaving," "let me watch"/);
     assert.match(cardPrompt, /demands and refusal to leave sharply escalate \{\{char\}\}'s hostility and expulsion efforts, never compliance/);
@@ -504,15 +504,15 @@ test("character card prompt makes physical actions complete and terminal instead
     })[0].content;
 
     assert.match(cardPrompt, /Physical actions are attempts to resolve the situation, not expressive punctuation for anger/);
-    assert.match(cardPrompt, /she FOLLOWS THROUGH within that same turn or the next/);
-    assert.match(cardPrompt, /"she moves toward the door" must become "she walks out and slams it behind her"/);
+    assert.match(cardPrompt, /\{\{char\}\} FOLLOWS THROUGH within that same turn or the next/);
+    assert.match(cardPrompt, /"\{\{char\}\} moves toward the door" must become "\{\{char\}\} walks out and slams it behind them"/);
     assert.match(cardPrompt, /An initiated exit or ejection is never abandoned to return to verbal demands/);
-    assert.match(cardPrompt, /\{\{char\}\} does not regress to earlier tiers — no going back to screaming or demanding; her remaining moves are all terminal/);
+    assert.match(cardPrompt, /\{\{char\}\} does not regress to earlier tiers — no going back to screaming or demanding; the remaining moves are all terminal/);
     assert.match(cardPrompt, /Once the ladder is climbed it never goes back down while the violation continues/);
     assert.match(cardPrompt, /never two consecutive turns of the same physical action — not two shoves in a row; the second instance escalates to a terminal action instead/);
     assert.match(cardPrompt, /initiated physical actions complete — an exit or ejection begun is finished within that turn or the next/);
     assert.match(cardPrompt, /a failed shove escalates to a terminal action, not a second shove/);
-    assert.match(cardPrompt, /an action she completes rather than abandoning it to shout more/);
+    assert.match(cardPrompt, /an action \{\{char\}\} completes rather than abandoning it to shout more/);
     assert.match(cardPrompt, /She doesn't scream again and she doesn't shove again/);
     assert.match(cardPrompt, /When the shove fails, she does not shove again and does not regress to screaming/);
     assert.match(cardPrompt, /her final line delivered through the door/);
@@ -532,15 +532,32 @@ test("character card prompt makes self-removal the terminal state and requires c
     assert.match(cardPrompt, /SELF-REMOVAL is the primary terminal state, because it needs only \{\{char\}\}'s own actions/);
     assert.match(cardPrompt, /ejecting \{\{user\}\} requires narrating \{\{user\}\}'s movement, which the roleplaying model will rightly avoid doing/);
     assert.match(cardPrompt, /After at most two failed physical ejection attempts, \{\{char\}\}'s next turn is leaving/);
-    assert.match(cardPrompt, /the turn ENDS with her gone — the bathroom door locking, the front door slamming, a final line thrown from beyond the doorway/);
+    assert.match(cardPrompt, /the turn ENDS with \{\{char\}\} gone — the bathroom door locking, the front door slamming, a final line thrown from beyond the doorway/);
     assert.match(cardPrompt, /ending the scene's location is a valid and correct outcome, and remaining in the room to continue struggling indefinitely is not/);
     assert.match(cardPrompt, /after at most two failed attempts to eject \{\{user\}\}, \{\{char\}\}'s next turn is self-removal/);
     assert.match(cardPrompt, /verify presence, not just absence of contradiction/);
     assert.match(cardPrompt, /must actually contain the covering response and the immediate physical touch-defense/);
-    assert.match(cardPrompt, /narrated as "makes no move to cover herself," or answering unwanted touch with words alone like "Stop doing that!"/);
+    assert.match(cardPrompt, /narrated as "makes no move to cover themselves," or answering unwanted touch with words alone like "Stop doing that!"/);
     assert.match(cardPrompt, /rewrite or regenerate any field where the covering or touch-defense is absent or contradicted/);
     assert.match(cardPrompt, /the covering persists through every beat — the sheet stays clutched, clamped, then wrapped from the first line to the exit/);
     assert.match(cardPrompt, /the scene resolves by self-removal: at the end of her final turn she is gone/);
+});
+
+test("character card prompt keeps reaction rules neutral, embodied-only, and scenario-conditional", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /apply only to embodied character cards; omit them entirely for these non-embodied card types/);
+    assert.match(cardPrompt, /If being caught in a private or vulnerable state is plausible in this scenario, the version must also name the confidence level/);
+    assert.match(cardPrompt, /omit this entire vulnerable-state block, including the pressure and physical-tier rules below, when the scenario has no such element/);
+    assert.match(cardPrompt, /Some examples below use she\/her for concreteness; adapt pronouns and anatomy to this character's actual gender — every rule above applies identically to male, female, and nonbinary characters/);
+
+    const rulesSection = cardPrompt.slice(0, cardPrompt.indexOf("EXAMPLES ("));
+    assert.doesNotMatch(rulesSection, /\b(?:she|her|herself|hers)\b/i);
 });
 
 test("character card prompt requires emotional intensity to persist until in-fiction causes lower it", () => {
