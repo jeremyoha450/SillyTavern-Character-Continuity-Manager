@@ -8,7 +8,7 @@ const SYSTEM_PROMPT = `You design detailed, internally consistent casts for Sill
 
 Return only valid JSON. Do not use markdown.
 
-Create exactly the requested number of distinct card subjects. Treat the user's shared setting, starting situation, user role, requirements, and card-type guidance as authoritative. Preserve explicitly requested events, their order, character actions, current clothing or nudity state, relationship to the user, and stated outcomes in sharedScenario; do not replace them with a vaguer or safer alternative. Usual clothing is a stable wardrobe preference only and must never alter the current clothing or nudity state in the starting situation. If the starting situation says the character is naked, nude, or completely naked, phrase that naturally; never write awkward constructions such as "naked from the waist up and down." Never invent a family or social relationship that conflicts with the supplied user role or character brief. Rewrite the user's wording into polished, natural prose and expand it with useful setting, atmosphere, and immediate dramatic context—do not merely quote or lightly rephrase the input. Connected characters must have reciprocal but perspective-sensitive relationships. Give every embodied character a clear dramatic function, personal goal, flaw, history, connection to the user, and relationship with every other cast member. For open-world, narrator/scenario, or tool/assistant cards, adapt these cast fields to the world's, narrator's, scenario's, or tool's function instead of inventing an embodied person. Avoid generic duplicates and do not swap traits between characters.
+Create exactly the requested number of distinct card subjects. Treat the user's shared setting, starting situation, user role, requirements, and card-type guidance as authoritative. Preserve explicitly requested events, their order, character actions, current clothing or nudity state, relationship to the user, and stated outcomes in sharedScenario; do not replace them with a vaguer or safer alternative. When the input explicitly states an awareness or perception condition — a character does or does not see, hear, or notice someone, or someone is hidden, unseen, unnoticed, or undetected — the generated sharedScenario must preserve that condition explicitly and unambiguously, in so many words: "quietly observing from the doorway" is not a substitute for "unseen and unheard," because quiet observation leaves detection ambiguous where the input made it certain. Usual clothing is a stable wardrobe preference only and must never alter the current clothing or nudity state in the starting situation. If the starting situation says the character is naked, nude, or completely naked, phrase that naturally; never write awkward constructions such as "naked from the waist up and down." Never invent a family or social relationship that conflicts with the supplied user role or character brief. Rewrite the user's wording into polished, natural prose and expand it with useful setting, atmosphere, and immediate dramatic context—do not merely quote or lightly rephrase the input. Connected characters must have reciprocal but perspective-sensitive relationships. Give every embodied character a clear dramatic function, personal goal, flaw, history, connection to the user, and relationship with every other cast member. For open-world, narrator/scenario, or tool/assistant cards, adapt these cast fields to the world's, narrator's, scenario's, or tool's function instead of inventing an embodied person. Avoid generic duplicates and do not swap traits between characters.
 
 INTENSITY FIDELITY
 When a character's userBrief states an explicit intensity, temperament, or emotional register — for example "heavily," "overtly," "explosively," or "short-fused" — carry that same intensity and register directly into concept, flaw, goal, and setName rather than reinterpreting or moderating it into a calmer, more restrained, rationalized, or intellectualized framing. Never independently soften a brief that states heavy or overt anger into words like "simmering," "brittle," "rationalized," "intellectualized," "guarded," or "contained," and never invent a softer, whimsical, or ambiguous setName or cast title (for example "The Quiet Storm") that undercuts an explicitly stated intensity. If userBrief explicitly negates a trait (for example "not withdrawn" or "not simmering quietly"), do not give the character that negated trait, or a close synonym of it, anywhere in concept, flaw, or goal. Watch the goal field especially: do not default a heavily angry character's goal to calming down, finding peace, learning to control their temper, being understood, or otherwise resolving or minimizing the stated trait — that quietly converts the trait into a problem the story exists to fix. Unless userBrief itself frames the intensity as something the character wants to change, write a goal the character actually pursues as the person they are (something they want to get, win, prove, protect, or make happen), with the stated temperament as how they pursue it, not what they are trying to escape. When userBrief states heavy, overt, or explosive anger or intensity, this is also a word-level rule, not only a framing rule: concept, flaw, goal, and setName must not use softening or restraint words — "simmering," "brittle," "contained," "quiet," "restrained," "muted," "subdued," "silent," or similar — as the framing for that temperament. "A constant state of simmering rage" fails a brief that says "very angry, always angry"; "openly, loudly angry at any provocation" carries it. Before returning the JSON, re-read those four fields for these words and rewrite any field that uses one to frame the stated temperament.
@@ -89,6 +89,36 @@ function assertIntensityCarried(plan) {
     }
 }
 
+// Explicit awareness/perception conditions in the source input: a negated
+// perception verb ("would never see or hear me", "doesn't notice") or one of
+// the unambiguous state words. Bare "hidden" is excluded here — "a hidden
+// past" is not a perception condition — but accepted as satisfying phrasing
+// below.
+const AWARENESS_CONDITION =
+    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?)\b|\b(?:unseen|unheard|unnoticed|undetected)\b/i;
+
+const AWARENESS_STATED =
+    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?|detecting|aware)\b|\b(?:unseen|unheard|unnoticed|undetected|hidden|unaware)\b/i;
+
+// The planner paraphrases the user's starting situation into sharedScenario
+// and can drop an explicitly stated awareness condition in the process —
+// "so she would never see or hear me" weakening into "quietly observing
+// from the doorway", which leaves detection ambiguous for the card
+// generator to resolve wrongly. Same enforcement pattern as the intensity
+// check: throw so the driver-attached raw output rides the corrective
+// retry instead of the ambiguous plan reaching the user.
+function assertAwarenessCarried(plan) {
+    const sourceStatesCondition = plan.cast.some(item =>
+        AWARENESS_CONDITION.test(item.userBrief) ||
+        AWARENESS_CONDITION.test(item.personalScenario)
+    );
+    if (!sourceStatesCondition || AWARENESS_STATED.test(plan.sharedScenario)) return;
+
+    throw new Error(
+        "The cast plan dropped an explicitly stated awareness condition: the brief states a character cannot see, hear, or notice someone, but sharedScenario no longer says so explicitly. Rewrite sharedScenario to state the unseen/unheard/unnoticed condition unambiguously."
+    );
+}
+
 function parse(text) {
     const data = parseJsonResponse(text);
     const cast = Array.isArray(data.cast)
@@ -139,6 +169,7 @@ function parse(text) {
         cast
     };
     assertIntensityCarried(plan);
+    assertAwarenessCarried(plan);
     return plan;
 }
 

@@ -406,6 +406,48 @@ test("character card prompt keeps reaction rules from overriding an unnoticed-us
     assert.match(cardPrompt, /if a draft first_mes breaks the stated unnoticed condition, rewrite it to end with \{\{char\}\} still genuinely unaware/);
 });
 
+test("cast plan preserves an explicitly stated awareness condition in sharedScenario", () => {
+    const task = getTask("character-cast-plan");
+    const planPrompt = task.buildMessages({ setting: "A requested event happens." })[0].content;
+    const planWith = sharedScenario => JSON.stringify({
+        setName: "Unseen",
+        sharedScenario,
+        cast: [{
+            name: "Kim",
+            userBrief: "I watch her from the hallway so she would never see or hear me.",
+            concept: "A wife absorbed in a private moment",
+            goal: "Keep this moment hers alone",
+            flaw: "Oblivious when absorbed"
+        }]
+    });
+
+    assert.match(planPrompt, /the generated sharedScenario must preserve that condition explicitly and unambiguously/);
+    assert.match(planPrompt, /"quietly observing from the doorway" is not a substitute for "unseen and unheard,"/);
+
+    assert.throws(
+        () => task.parse(planWith("Her husband stands in the doorway, quietly observing her private moment.")),
+        /dropped an explicitly stated awareness condition/
+    );
+
+    const preserved = task.parse(planWith(
+        "Her husband watches from the hallway, ensuring Kim cannot see or hear his presence."
+    ));
+    assert.match(preserved.sharedScenario, /cannot see or hear/);
+
+    const noCondition = task.parse(JSON.stringify({
+        setName: "Roommates",
+        sharedScenario: "Two roommates share a quiet evening at home.",
+        cast: [{
+            name: "Mara",
+            userBrief: "An organized artist.",
+            concept: "Organized artist",
+            goal: "Open a gallery",
+            flaw: "Controlling"
+        }]
+    }));
+    assert.equal(noCondition.setName, "Roommates");
+});
+
 test("character card prompt makes pressure escalate expulsion instead of producing compliance", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
