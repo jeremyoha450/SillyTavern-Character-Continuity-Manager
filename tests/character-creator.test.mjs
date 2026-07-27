@@ -582,6 +582,29 @@ test("character card prompt enforces a physical action tier and immediate touch 
     assert.match(cardPrompt, /repeats the same demand or shouted line three or more times without a physical action, or responds to unwanted physical contact with words alone/);
 });
 
+test("character card prompt caps ejection at exactly one attempt with no varied methods", () => {
+    const cardTask = getTask("character-card");
+    const cardPrompt = cardTask.buildMessages({
+        plan: { sharedScenario: "A requested event happens." },
+        authoritativeStartingSituation: "The character is naked in the opening.",
+        authoritativeUserRole: "Husband"
+    })[0].content;
+
+    assert.match(cardPrompt, /\{\{char\}\} gets exactly ONE such attempt/);
+    assert.match(cardPrompt, /This is a hard sequence, not a menu of equally-valid options to cycle through/);
+    assert.match(cardPrompt, /a shove, blocking the doorway, grabbing an arm, and clearing a path to push \{\{user\}\} out again are all the same move for this purpose/);
+    assert.match(cardPrompt, /Ejection is not simply de-prioritized after that point — it is no longer an available move at all/);
+    assert.match(cardPrompt, /After exactly one failed physical ejection attempt/);
+    assert.match(cardPrompt, /The physical-ejection tier is capped at exactly one attempt, not a rotating set of interchangeable actions/);
+    assert.match(cardPrompt, /\{\{char\}\} gets exactly ONE attempt to physically eject \{\{user\}\} \(a shove, a push toward the door\), never a second in any form/);
+    assert.match(cardPrompt, /no repeating it identically and no varying the method \(blocking the doorway, grabbing an arm, clearing a path to push \{\{user\}\} out again all count as the same forbidden repeat\)/);
+    assert.match(cardPrompt, /with at most one attempt to physically eject \{\{user\}\} before self-removal becomes the only remaining move/);
+    assert.match(cardPrompt, /\{\{char\}\} attempts to eject \{\{user\}\} more than once in any form — a second shove, a different push, blocking the doorway, grabbing an arm, or any other variation/);
+    assert.match(cardPrompt, /That shove is her one and only ejection attempt/);
+    assert.match(cardPrompt, /does not try a different way to move him — no blocking the doorway, no grabbing his arm, no clearing a path to shove him out a second time/);
+    assert.match(cardPrompt, /ejection is no longer an available move, and her next turn is terminal/);
+});
+
 test("character card prompt makes physical actions complete and terminal instead of looping", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
@@ -594,18 +617,21 @@ test("character card prompt makes physical actions complete and terminal instead
     assert.match(cardPrompt, /\{\{char\}\} FOLLOWS THROUGH within that same turn or the next/);
     assert.match(cardPrompt, /"\{\{char\}\} moves toward the door" must become "\{\{char\}\} walks out and slams it behind them"/);
     assert.match(cardPrompt, /An initiated exit or ejection is never abandoned to return to verbal demands/);
-    assert.match(cardPrompt, /\{\{char\}\} does not regress to earlier tiers — no going back to screaming or demanding; the remaining moves are all terminal/);
+    assert.match(cardPrompt, /\{\{char\}\} does not regress to earlier tiers — no going back to screaming or demanding — and does not attempt to eject \{\{user\}\} again in any form/);
+    assert.match(cardPrompt, /The remaining moves are all terminal: \{\{char\}\} exits the room with their covering/);
     assert.match(cardPrompt, /Once the ladder is climbed it never goes back down while the violation continues/);
-    assert.match(cardPrompt, /never two consecutive turns of the same physical action — not two shoves in a row; the second instance escalates to a terminal action instead/);
+    assert.match(cardPrompt, /The physical-ejection tier is capped at exactly one attempt, not a rotating set of interchangeable actions/);
+    assert.match(cardPrompt, /the very next beat must be self-removal or disengagement, never another variation on trying to move \{\{user\}\}/);
     assert.match(cardPrompt, /initiated physical actions complete — an exit or ejection begun is finished within that turn or the next/);
-    assert.match(cardPrompt, /a failed shove escalates to a terminal action, not a second shove/);
+    assert.match(cardPrompt, /\{\{char\}\} gets exactly ONE attempt to physically eject \{\{user\}\}.*never a second in any form/);
     assert.match(cardPrompt, /an action \{\{char\}\} completes rather than abandoning it to shout more/);
     assert.match(cardPrompt, /She doesn't scream again and she doesn't shove again/);
-    assert.match(cardPrompt, /When the shove fails, she does not shove again and does not regress to screaming/);
+    assert.match(cardPrompt, /When it fails, she does not shove again, does not try a different way to move him/);
+    assert.match(cardPrompt, /That shove is her one and only ejection attempt/);
     assert.match(cardPrompt, /her final line delivered through the door/);
     assert.match(cardPrompt, /initiated exit or ejection is abandoned rather than completed/);
-    assert.match(cardPrompt, /same physical action repeats on consecutive turns/);
-    assert.match(cardPrompt, /never back down the ladder/);
+    assert.match(cardPrompt, /\{\{char\}\} attempts to eject \{\{user\}\} more than once in any form/);
+    assert.match(cardPrompt, /never a second or varied ejection attempt and never back down the ladder/);
 });
 
 test("character card prompt makes self-removal the terminal state and requires covering beats present", () => {
@@ -618,10 +644,11 @@ test("character card prompt makes self-removal the terminal state and requires c
 
     assert.match(cardPrompt, /SELF-REMOVAL is the primary terminal state, because it needs only \{\{char\}\}'s own actions/);
     assert.match(cardPrompt, /ejecting \{\{user\}\} requires narrating \{\{user\}\}'s movement, which the roleplaying model will rightly avoid doing/);
-    assert.match(cardPrompt, /After at most two failed physical ejection attempts, \{\{char\}\}'s next turn is leaving/);
+    assert.match(cardPrompt, /After exactly one failed physical ejection attempt, \{\{char\}\}'s next turn is leaving/);
     assert.match(cardPrompt, /the turn ENDS with \{\{char\}\} gone — the bathroom door locking, the front door slamming, a final line thrown from beyond the doorway/);
-    assert.match(cardPrompt, /ending the scene's location is a valid and correct outcome, and remaining in the room to continue struggling indefinitely is not/);
-    assert.match(cardPrompt, /after at most two failed attempts to eject \{\{user\}\}, \{\{char\}\}'s next turn is self-removal/);
+    assert.match(cardPrompt, /remaining in the room to keep trying different ways to move \{\{user\}\} is not/);
+    assert.match(cardPrompt, /after that one failed attempt to eject \{\{user\}\}, \{\{char\}\}'s next turn is self-removal/);
+    assert.match(cardPrompt, /does not attempt to eject \{\{user\}\} again in any form: no second shove, no blocking the doorway, no grabbing an arm/);
     assert.match(cardPrompt, /verify presence, not just absence of contradiction/);
     assert.match(cardPrompt, /must actually contain the covering response and the immediate physical touch-defense/);
     assert.match(cardPrompt, /narrated as "makes no move to cover themselves," or answering unwanted touch with words alone like "Stop doing that!"/);
