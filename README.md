@@ -109,7 +109,7 @@ CCM supports OpenAI Compatible, OpenAI, OpenRouter, DeepSeek, NanoGPT, Ollama, A
 
 Routine State and Knowledge automation can make many requests and depends on reliable structured extraction. Use a capable local model for that workload; a mid-sized model in roughly the current 7B–9B class is a practical starting point, while models below roughly 4B are generally unsuitable for reliable structured output. Smaller models may require CCM's single bounded corrective retry and can still fail when they cannot satisfy the schema.
 
-When the SillyTavern active model is selected, CCM supplies the task's required response length per request. Character planning and full-card generation request up to 8,192 output tokens, while field revisions request up to 4,096. SillyTavern restores the user's normal response-length setting after each request.
+When the SillyTavern active model is selected, CCM supplies the task's required response length per request. Character planning requests up to 8,192 output tokens, full-card generation requests up to 16,384, and field revisions request up to 4,096. SillyTavern restores the user's normal response-length setting after each request.
 
 ## Logging
 
@@ -173,7 +173,7 @@ Build the runtime-only artifact with `npm run release:build` and compare it with
 - Imported JSON/PNG cards are limited to 5 MB. Decoded card JSON is limited to 2 MB and 24 nesting levels, with at most 200 tags, 100 alternate greetings of each type, and 500 lorebook entries. PNG signatures and chunk bounds are validated.
 - Prompt/image history keeps the newest 200 records per character and group scope. The active image reference is separate and is not pruned.
 - Durable knowledge is not silently pruned. Knowledge history is intentionally omitted.
-- Direct CCM provider HTTP requests time out after 60 seconds. No manual Cancel UI is provided because the SillyTavern active-model route cannot be cancelled safely end to end.
+- Direct CCM provider HTTP requests time out after 300 seconds. No manual Cancel UI is provided because the SillyTavern active-model route cannot be cancelled safely end to end.
 - Training Data Collection is experimental, opt-in, bounded, and off by default. CCM-AI and model research remain separate.
 
 ## Status

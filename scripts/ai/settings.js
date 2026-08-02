@@ -16,6 +16,8 @@ import {
 
 const defaults = {
 
+    characterEnrollment: "ask",
+
     aiSource: "ccm",
 
     driver: "",
@@ -68,6 +70,10 @@ function loadSettings() {
 
     return {
         version: saved.version,
+        characterEnrollment:
+            saved.characterEnrollment === "automatic"
+                ? "automatic"
+                : defaults.characterEnrollment,
         aiSource:
             saved.aiSource === "sillytavern"
                 ? "sillytavern"
@@ -111,6 +117,9 @@ export function resetSettings() {
     settings.driver =
         reset.driver;
 
+    settings.characterEnrollment =
+        reset.characterEnrollment;
+
     settings.aiSource =
         reset.aiSource;
 
@@ -137,6 +146,18 @@ export function setCurrentDriverId(id) {
 
 export function getAISource() {
     return settings.aiSource || "ccm";
+}
+
+export function getCharacterEnrollmentMode() {
+    return settings.characterEnrollment === "automatic"
+        ? "automatic"
+        : "ask";
+}
+
+export function setCharacterEnrollmentMode(mode) {
+    settings.characterEnrollment = mode === "automatic"
+        ? "automatic"
+        : "ask";
 }
 
 export function setAISource(source) {

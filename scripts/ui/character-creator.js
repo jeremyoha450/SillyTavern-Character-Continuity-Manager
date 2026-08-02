@@ -1133,7 +1133,6 @@ export function openCharacterCreator(onCreated = null) {
     }
 
     dialog.querySelector("[data-close]").addEventListener("click", () => dialog.remove());
-    dialog.addEventListener("click", event => { if (event.target === dialog) dialog.remove(); });
     const popupHost = document.getElementById("ccm-panel")?.closest("dialog.popup")?.querySelector(".popup-body");
     (document.getElementById("ccm-popup-root") || popupHost || document.body).appendChild(dialog);
     renderCount();

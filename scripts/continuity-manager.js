@@ -78,6 +78,7 @@ import {
     targetCharacterConversation
 } from "./group-context.js";
 import { automationScopeKey } from "./automation-scope.js";
+import { getCharacterEnrollmentMode } from "./ai/settings.js";
 
 
 let autoStateCounter = {};
@@ -87,6 +88,8 @@ let autoKnowledgeCounter = {};
 const autoUpdateInFlight = new Set();
 let contextSyncInFlight = false;
 let contextSyncPending = false;
+let enrollmentPromptContext = "";
+const enrollmentPromptDecisions = new Map();
 
 export function initializeContinuityManager() {
 
@@ -149,6 +152,11 @@ async function onChatLoaded() {
     const cards =
         getContextCharacters(context);
 
+    updateEnrollmentPromptContext(
+        context,
+        cards
+    );
+
     if (!cards.length) {
 
         const panel =
@@ -196,6 +204,17 @@ async function onChatLoaded() {
             }
 
         } else {
+
+            const shouldAdd =
+                getCharacterEnrollmentMode() === "automatic" ||
+                await confirmCharacterEnrollment(
+                    context,
+                    card
+                );
+
+            if (!shouldAdd) {
+                continue;
+            }
 
             record =
                 await createCharacterFromCard(
@@ -250,7 +269,21 @@ async function onChatLoaded() {
 
     const record = records[0];
 
-    if (!record) return;
+    if (!record) {
+        const panel =
+            document.getElementById(
+                "ccm-panel"
+            );
+
+        if (
+            panel &&
+            getComputedStyle(panel).display !== "none"
+        ) {
+            renderCharacterList();
+        }
+
+        return;
+    }
 
     if (createdCount) {
         showCCMSuccess(
@@ -278,6 +311,74 @@ async function onChatLoaded() {
     } else {
         renderCharacterList();
     }
+}
+
+function updateEnrollmentPromptContext(
+    context,
+    cards
+) {
+    const nextContext = JSON.stringify({
+        groupId:
+            context?.groupId || "",
+        cards:
+            cards.map(card =>
+                card?.avatar ||
+                card?.name ||
+                ""
+            ).sort()
+    });
+
+    if (nextContext === enrollmentPromptContext) {
+        return;
+    }
+
+    enrollmentPromptContext = nextContext;
+    enrollmentPromptDecisions.clear();
+}
+
+async function confirmCharacterEnrollment(
+    context,
+    card
+) {
+    const cardKey =
+        card?.avatar ||
+        card?.name ||
+        "unknown-character";
+
+    if (enrollmentPromptDecisions.has(cardKey)) {
+        return enrollmentPromptDecisions.get(cardKey);
+    }
+
+    const popupConfirm =
+        context?.Popup?.show?.confirm;
+
+    let confirmed = false;
+
+    if (typeof popupConfirm === "function") {
+        confirmed = Boolean(
+            await context.Popup.show.confirm(
+                "Add Character to CCM?",
+                "This character is not currently tracked by CCM. Would you like to add them now?",
+                {
+                    okButton: "Add to CCM",
+                    cancelButton: "Not Now"
+                }
+            )
+        );
+    } else if (typeof globalThis.confirm === "function") {
+        confirmed = globalThis.confirm(
+            "This character is not currently tracked by CCM. Would you like to add them now?"
+        );
+    }
+
+    if (!confirmed) {
+        enrollmentPromptDecisions.set(
+            cardKey,
+            false
+        );
+    }
+
+    return confirmed;
 }
 
 async function createCharacterFromCard(

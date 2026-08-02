@@ -26,7 +26,9 @@ test("settings tabs open", async ({ page }) => {
     await page.locator("#ccm-open-settings").click();
     await expect(page.locator("#ccm-settings-dialog")).toBeVisible();
 
-    for (const tab of ["provider", "image", "debug", "training", "health"]) {
+    await expect(page.locator("#ccm-settings-character-enrollment")).toHaveValue("ask");
+
+    for (const tab of ["general", "provider", "image", "debug", "training", "health"]) {
         await page.locator(`[data-tab="${tab}"]`).click();
         await expect(page.locator(`[data-panel="${tab}"]`)).toBeVisible();
     }
@@ -66,6 +68,8 @@ test("character creator modal and wait layer states are correct", async ({ page 
     await expect(page.locator("#ccm-character-creator-dialog")).toBeVisible();
     await expect(page.locator("[data-creator-wait]")).toBeHidden();
     await expect(page.getByRole("button", { name: "Next" })).toBeEnabled();
+    await page.locator("#ccm-character-creator-dialog").click({ position: { x: 5, y: 5 } });
+    await expect(page.locator("#ccm-character-creator-dialog")).toBeVisible();
 });
 
 test("responsive dashboard switches between floating and popup modes", async ({ page }) => {

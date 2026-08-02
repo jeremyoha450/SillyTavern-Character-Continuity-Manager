@@ -5,6 +5,8 @@ import {
 } from "../ai/registry.js";
 
 import {
+    getCharacterEnrollmentMode,
+    setCharacterEnrollmentMode,
     getAISource,
     setAISource,
     getCurrentDriverId,
@@ -313,10 +315,17 @@ export function openSettings() {
             <div class="ccm-settings-tabs" role="tablist">
                 <button
                     class="ccm-settings-tab is-active"
-                    data-tab="provider"
+                    data-tab="general"
                     type="button"
                     role="tab"
                     aria-selected="true"
+                >General</button>
+                <button
+                    class="ccm-settings-tab"
+                    data-tab="provider"
+                    type="button"
+                    role="tab"
+                    aria-selected="false"
                 >AI Provider</button>
                 <button
                     class="ccm-settings-tab"
@@ -348,7 +357,27 @@ export function openSettings() {
                 >Health</button>
             </div>
 
-            <div class="ccm-settings-tab-panel" data-panel="provider">
+            <div class="ccm-settings-tab-panel" data-panel="general">
+                <label class="ccm-settings-field">
+                    ${renderHelpLabel(
+                        "New Character Handling",
+                        "Choose whether CCM asks before tracking an untracked character or adds them automatically when opened."
+                    )}
+                    <select id="ccm-settings-character-enrollment">
+                        <option value="ask">Ask every time (Default)</option>
+                        <option value="automatic">Add automatically</option>
+                    </select>
+                </label>
+                <p class="ccm-settings-help">
+                    This only applies to characters that have not already been added to CCM.
+                </p>
+            </div>
+
+            <div
+                class="ccm-settings-tab-panel"
+                data-panel="provider"
+                hidden
+            >
                 <label class="ccm-settings-field">
                     ${renderHelpLabel(
                         "Global AI Source",
@@ -730,6 +759,14 @@ export function openSettings() {
 
     const providerSelect =
         dialog.querySelector("#ccm-settings-provider");
+
+    const characterEnrollmentSelect =
+        dialog.querySelector(
+            "#ccm-settings-character-enrollment"
+        );
+
+    characterEnrollmentSelect.value =
+        getCharacterEnrollmentMode();
 
     const aiSourceSelect =
         dialog.querySelector("#ccm-settings-ai-source");
@@ -1216,6 +1253,9 @@ export function openSettings() {
                 providerSelect.value =
                     getCurrentDriverId();
 
+                characterEnrollmentSelect.value =
+                    getCharacterEnrollmentMode();
+
                 aiSourceSelect.value =
                     getAISource();
 
@@ -1291,6 +1331,10 @@ export function openSettings() {
                     });
 
                 setCurrentDriverId(driverId);
+
+                setCharacterEnrollmentMode(
+                    characterEnrollmentSelect.value
+                );
 
                 setAISource(
                     aiSourceSelect.value

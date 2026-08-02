@@ -28,7 +28,7 @@ The default suite checks:
 
 - CCM launcher opens.
 - A character dashboard opens when a record exists.
-- AI Provider, Image Generation, Debug / Logging, and Health settings tabs open.
+- General, AI Provider, Image Generation, Debug / Logging, Training Data, and Health settings tabs open.
 - Character creator opens with its wait layer hidden and navigation enabled.
 - Wide/floating and narrow/popup viewport transitions retain a visible dashboard.
 

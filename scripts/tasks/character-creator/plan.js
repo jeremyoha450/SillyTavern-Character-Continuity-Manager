@@ -1,4 +1,5 @@
 import {
+    firstAffirmedMatch,
     parseJsonResponse,
     stringArray,
     stringValue
@@ -68,18 +69,80 @@ const OVERT_INTENSITY_BRIEF =
 // carries through the driver layer with the raw output attached, which
 // triggers the standard one-shot corrective retry instead of handing the
 // user a soft-framed plan to fix manually.
-function assertIntensityCarried(plan) {
-    const overtCast = plan.cast.filter(item => OVERT_INTENSITY_BRIEF.test(item.userBrief));
+function sourceBriefs(input = {}) {
+    if (Array.isArray(input.briefs)) return input.briefs;
+    if (Array.isArray(input.concept)) return input.concept;
+    try {
+        const parsed = JSON.parse(String(input.concept || ""));
+        return Array.isArray(parsed) ? parsed : [];
+    } catch {
+        return [];
+    }
+}
+
+function originalFor(planned, index, input) {
+    const sources = sourceBriefs(input);
+    return sources.find(item =>
+        stringValue(item?.name).toLowerCase() === planned.name.toLowerCase()
+    ) || sources[index] || null;
+}
+
+function authoritativeText(original, input = {}) {
+    return [
+        original?.brief,
+        original?.scenario,
+        input.setting,
+        input.userRequirements
+    ].filter(Boolean).join("\n");
+}
+
+function authoritativeIntensityText(planned, original, input = {}, castCount = 1) {
+    const local = [original?.brief, original?.scenario].filter(Boolean);
+    const global = [input.setting, input.userRequirements]
+        .filter(Boolean)
+        .join("\n");
+    if (castCount <= 1) return [...local, global].filter(Boolean).join("\n");
+
+    // Shared setup text can describe one member of a larger cast. Do not
+    // accidentally impose that member's anger on everybody else: for a
+    // multi-character plan, use only global sentences that name this member.
+    const name = planned.name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const namedGlobal = name
+        ? global.split(/(?<=[.!?\n])/).filter(sentence =>
+            new RegExp(`\\b${name}\\b`, "i").test(sentence)
+        )
+        : [];
+    return [...local, ...namedGlobal].filter(Boolean).join("\n");
+}
+
+function hasAuthoritativeInput(input = {}) {
+    return sourceBriefs(input).length > 0 ||
+        [input.setting, input.userRequirements].some(value => stringValue(value));
+}
+
+function assertIntensityCarried(plan, input = {}) {
+    const useOriginal = hasAuthoritativeInput(input);
+    const overtCast = plan.cast.map((item, index) => ({
+        item,
+        source: useOriginal
+            ? authoritativeIntensityText(
+                item,
+                originalFor(item, index, input),
+                input,
+                plan.cast.length
+            )
+            : item.userBrief
+    })).filter(({ source }) => firstAffirmedMatch(source, OVERT_INTENSITY_BRIEF));
     if (!overtCast.length) return;
 
     const offending = [];
-    for (const item of overtCast) {
+    for (const { item } of overtCast) {
         for (const field of ["concept", "flaw", "goal"]) {
-            const match = item[field].match(SOFT_FRAMING_WORDS);
+            const match = firstAffirmedMatch(item[field], SOFT_FRAMING_WORDS);
             if (match) offending.push(`${item.name}'s ${field} uses "${match[0]}"`);
         }
     }
-    const setNameMatch = plan.setName.match(SOFT_FRAMING_WORDS);
+    const setNameMatch = firstAffirmedMatch(plan.setName, SOFT_FRAMING_WORDS);
     if (setNameMatch) offending.push(`setName uses "${setNameMatch[0]}"`);
 
     if (offending.length) {
@@ -91,14 +154,15 @@ function assertIntensityCarried(plan) {
 
 // Explicit awareness/perception conditions in the source input: a negated
 // perception verb ("would never see or hear me", "doesn't notice") or one of
-// the unambiguous state words. Bare "hidden" is excluded here — "a hidden
-// past" is not a perception condition — but accepted as satisfying phrasing
-// below.
+// the unambiguous state words. "Hidden" counts only when attached to a person
+// or "hidden from" relationship; an unrelated hidden object does not count.
+// The generated scenario must use direct perception wording rather than bare
+// "hidden", which is too ambiguous to prove that the condition was retained.
 const AWARENESS_CONDITION =
-    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?)\b|\b(?:unseen|unheard|unnoticed|undetected)\b/i;
+    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?)\b|\b(?:unseen|unheard|unnoticed|undetected)\b|\bunaware\b[^.!?]{0,30}\b(?:of\s+(?:me|us|the user|\{\{user\}\}|the observer|the watcher|the visitor|the intruder|her husband|his wife|their partner|the presence)|that\s+(?:i|we|the user|\{\{user\}\}))\b|\b(?:i|me|we|he|she|they|someone|observer|watcher|user|character|\{\{user\}\})\b[^.!?]{0,24}\bhidden\b|\bhidden\b[^.!?]{0,24}\bfrom\b/i;
 
 const AWARENESS_STATED =
-    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?|detecting|aware)\b|\b(?:unseen|unheard|unnoticed|undetected|hidden|unaware)\b/i;
+    /\b(?:never|not|cannot|without|\w+n't)\b[^.!?]{0,40}\b(?:sees?|seeing|hears?|hearing|notices?|noticing|detects?|detecting|aware)\b|\b(?:unseen|unheard|unnoticed|undetected)\b|\bunaware\b[^.!?]{0,30}\b(?:of\s+(?:me|us|the user|\{\{user\}\}|the observer|the watcher|the visitor|the intruder|her husband|his wife|their partner|the presence)|that\s+(?:i|we|the user|\{\{user\}\}))\b/i;
 
 // The planner paraphrases the user's starting situation into sharedScenario
 // and can drop an explicitly stated awareness condition in the process —
@@ -107,11 +171,16 @@ const AWARENESS_STATED =
 // generator to resolve wrongly. Same enforcement pattern as the intensity
 // check: throw so the driver-attached raw output rides the corrective
 // retry instead of the ambiguous plan reaching the user.
-function assertAwarenessCarried(plan) {
-    const sourceStatesCondition = plan.cast.some(item =>
-        AWARENESS_CONDITION.test(item.userBrief) ||
-        AWARENESS_CONDITION.test(item.personalScenario)
-    );
+function assertAwarenessCarried(plan, input = {}) {
+    const useOriginal = hasAuthoritativeInput(input);
+    const sourceStatesCondition = useOriginal
+        ? plan.cast.some((item, index) => AWARENESS_CONDITION.test(
+            authoritativeText(originalFor(item, index, input), input)
+        ))
+        : plan.cast.some(item =>
+            AWARENESS_CONDITION.test(item.userBrief) ||
+            AWARENESS_CONDITION.test(item.personalScenario)
+        );
     if (!sourceStatesCondition || AWARENESS_STATED.test(plan.sharedScenario)) return;
 
     throw new Error(
@@ -119,7 +188,7 @@ function assertAwarenessCarried(plan) {
     );
 }
 
-function parse(text) {
+function parse(text, input = {}) {
     const data = parseJsonResponse(text);
     const cast = Array.isArray(data.cast)
         ? data.cast.map(item => ({
@@ -168,8 +237,8 @@ function parse(text) {
         sharedHistory: stringArray(data.sharedHistory),
         cast
     };
-    assertIntensityCarried(plan);
-    assertAwarenessCarried(plan);
+    assertIntensityCarried(plan, input);
+    assertAwarenessCarried(plan, input);
     return plan;
 }
 

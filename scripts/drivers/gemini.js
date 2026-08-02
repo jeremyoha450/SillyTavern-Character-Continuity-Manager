@@ -215,7 +215,7 @@ const geminiDriver = {
 
         let parsedResult;
         try {
-            parsedResult = task.parse(content);
+            parsedResult = task.parse(content, input);
         } catch (error) {
             error.debugRawOutput = content;
             throw error;

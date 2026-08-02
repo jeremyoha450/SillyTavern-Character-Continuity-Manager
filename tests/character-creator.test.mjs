@@ -255,6 +255,61 @@ test("character card requires lore entries when resistant traits are present", (
     assert.equal(calm.character_book.entries.length, 0);
 });
 
+test("character card trait validation respects negation", () => {
+    const task = getTask("character-card");
+    const parse = personality => task.parse(JSON.stringify({
+        name: "Mara",
+        description: "[Identity]\nName: Mara",
+        personality,
+        character_book: { name: "Mara Lore", entries: [] }
+    }));
+
+    const calm = parse(
+        "[Core Personality]\nMara is warm and patient. She is not hostile or angry, even under stress."
+    );
+    assert.equal(calm.character_book.entries.length, 0);
+
+    const confident = parse(
+        "[Core Personality]\nMara has a high confidence level and is not ashamed of who she is."
+    );
+    assert.match(confident.personality, /not ashamed/);
+
+    assert.throws(
+        () => parse(
+            "[Core Personality]\nMara is not calm, but angry and openly hostile when betrayed."
+        ),
+        /resistant traits/
+    );
+});
+
+test("character card requires resistant lore from the authoritative plan", () => {
+    const task = getTask("character-card");
+    const output = JSON.stringify({
+        name: "Kim",
+        description: "[Identity]\nName: Kim",
+        personality: "[Core Personality]\nDirect and uncompromising.",
+        character_book: { name: "Kim Lore", entries: [] }
+    });
+
+    assert.throws(
+        () => task.parse(output, {
+            selectedCharacter: {
+                userBrief: "Kim is always openly angry and hostile.",
+                concept: "An explosive neighbor"
+            }
+        }),
+        /resistant traits.*character_book\.entries is empty/
+    );
+
+    const negated = task.parse(output, {
+        selectedCharacter: {
+            userBrief: "Kim is not hostile or angry.",
+            concept: "A patient neighbor"
+        }
+    });
+    assert.equal(negated.character_book.entries.length, 0);
+});
+
 test("character card prompt forbids template-dumping other confidence branches into PHI", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
@@ -535,6 +590,42 @@ test("cast plan preserves an explicitly stated awareness condition in sharedScen
     assert.equal(noCondition.setName, "Roommates");
 });
 
+test("cast plan validates awareness against the authoritative creator input", () => {
+    const task = getTask("character-cast-plan");
+    const generated = sharedScenario => JSON.stringify({
+        setName: "Unseen",
+        sharedScenario,
+        cast: [{
+            name: "Kim",
+            userBrief: "Kim is occupied with her own task.",
+            personalScenario: "A quiet room.",
+            concept: "An absorbed artist",
+            goal: "Finish her work",
+            flaw: "Single-minded"
+        }]
+    });
+    const input = {
+        setting: "I watch from the hallway, where Kim can never see or hear me.",
+        concept: JSON.stringify([{
+            name: "Kim",
+            brief: "An absorbed artist.",
+            scenario: "She remains completely unaware of me."
+        }])
+    };
+
+    assert.throws(
+        () => task.parse(generated(
+            "A hidden key lies on the table while Kim works and her husband watches from the doorway."
+        ), input),
+        /dropped an explicitly stated awareness condition/
+    );
+
+    const preserved = task.parse(generated(
+        "Kim works while her husband remains unseen and unheard in the hallway."
+    ), input);
+    assert.match(preserved.sharedScenario, /unseen and unheard/);
+});
+
 test("character card prompt makes pressure escalate expulsion instead of producing compliance", () => {
     const cardTask = getTask("character-card");
     const cardPrompt = cardTask.buildMessages({
@@ -762,6 +853,46 @@ test("cast plan rejects soft-framed fields for an overtly angry brief", () => {
         }]
     }));
     assert.equal(calmBrief.cast[0].concept, "A quiet, restrained artist");
+});
+
+test("cast plan validates intensity against the authoritative creator brief", () => {
+    const task = getTask("character-cast-plan");
+    const output = fields => JSON.stringify({
+        setName: fields.setName || "Household Friction",
+        sharedScenario: "A tense evening at home.",
+        cast: [{
+            name: "Kim",
+            userBrief: "Kim can be irritable.",
+            concept: fields.concept || "A quietly simmering presence",
+            goal: fields.goal || "Keep the household orderly",
+            flaw: fields.flaw || "She contains her frustration",
+            relationships: []
+        }]
+    });
+    const input = {
+        concept: JSON.stringify([{
+            name: "Kim",
+            brief: "Kim is very angry, always angry, and openly explosive.",
+            scenario: "A tense evening at home."
+        }])
+    };
+
+    assert.throws(
+        () => task.parse(output({}), input),
+        /softens an explicitly intense userBrief/
+    );
+
+    const preserved = task.parse(output({
+        concept: "An openly explosive presence",
+        flaw: "Her anger erupts at the smallest provocation"
+    }), input);
+    assert.match(preserved.cast[0].concept, /openly explosive/);
+
+    const negatedWord = task.parse(output({
+        concept: "Not quiet or contained; she is openly explosive",
+        flaw: "Her anger erupts at the smallest provocation"
+    }), input);
+    assert.match(negatedWord.cast[0].concept, /Not quiet or contained/);
 });
 
 test("character field task parses an AI revision", () => {

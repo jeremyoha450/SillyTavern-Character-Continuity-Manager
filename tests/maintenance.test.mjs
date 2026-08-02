@@ -74,6 +74,19 @@ test("CCM launcher supports standard click and keyboard activation", async () =>
     assert.match(uiSource, /handle\.addEventListener\("keydown"/);
 });
 
+test("character creator ignores accidental backdrop clicks", async () => {
+    const creator = await readFile(
+        new URL("../scripts/ui/character-creator.js", import.meta.url),
+        "utf8"
+    );
+
+    assert.doesNotMatch(
+        creator,
+        /dialog\.addEventListener\("click", event => \{ if \(event\.target === dialog\) dialog\.remove\(\); \}\)/
+    );
+    assert.match(creator, /\[data-close\]"\)\.addEventListener\("click", \(\) => dialog\.remove\(\)\)/);
+});
+
 test("character creator provides coherent examples and separated usual clothing fields", async () => {
     const creator = await readFile(
         new URL("../scripts/ui/character-creator.js", import.meta.url),

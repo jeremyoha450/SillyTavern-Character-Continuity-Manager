@@ -40,7 +40,7 @@ test("health snapshot reports versions and safe availability without secrets", a
 
     assert.equal(health.ccmVersion, "0.1.2");
     assert.equal(health.databaseVersion, 5);
-    assert.equal(health.aiSettingsVersion, 7);
+    assert.equal(health.aiSettingsVersion, 8);
     assert.equal(health.sillyTavernVersion, "1.13.4");
     assert.equal(health.storage, "SillyTavern extension settings");
     assert.equal(health.debugLogging, "Off");

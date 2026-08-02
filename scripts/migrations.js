@@ -1,7 +1,7 @@
 // scripts/migrations.js
 
 export const DATABASE_VERSION = 5;
-export const AI_SETTINGS_VERSION = 7;
+export const AI_SETTINGS_VERSION = 8;
 
 export function migrateDatabase(value) {
 
@@ -109,6 +109,10 @@ export function migrateAISettings(value) {
 
     return {
         version: AI_SETTINGS_VERSION,
+        characterEnrollment:
+            source.characterEnrollment === "automatic"
+                ? "automatic"
+                : "ask",
         aiSource:
             source.aiSource === "sillytavern"
                 ? "sillytavern"

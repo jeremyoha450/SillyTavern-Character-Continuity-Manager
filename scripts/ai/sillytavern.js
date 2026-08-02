@@ -67,7 +67,7 @@ export async function executeWithSillyTavern(task, input) {
 
     let parsedResult;
     try {
-        parsedResult = task.parse(text);
+        parsedResult = task.parse(text, input);
     } catch (error) {
         error.debugRawOutput = text;
         throw error;
